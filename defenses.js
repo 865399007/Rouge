@@ -11,8 +11,11 @@ export class Defenses {
     this.scene=scene;
     const bounds=document.getElementById("game").getBoundingClientRect();
     const ratio=bounds.width/Math.max(1,bounds.height);
-    this.width=3*Math.max(900,Math.round(620*ratio));
-    this.height=2*Math.max(620,Math.round(900/ratio));
+    const screenWidth = Math.max(900, Math.round(620 * ratio));
+    const screenHeight = Math.max(620, Math.round(900 / ratio));
+    const side = Math.round(Math.sqrt(6 * screenWidth * screenHeight));
+    this.width = side;
+    this.height = side;
     scene.cameras.main.setBounds(0,0,this.width,this.height);
     scene.add.rectangle(this.width/2,this.height/2,this.width-8,this.height-8)
       .setStrokeStyle(8,0xe4ce8f).setDepth(0);
