@@ -1,5 +1,5 @@
 // Shared Phaser drawing coordinates and hit regions for both runtimes.
-export function drawBattleHud({s,w,h,ids,screen,capRect,toggleNode,padNode,settingsOpen,volume,onToggle,drawUpgrade,add,box,type,images,drawIcon,hit}){
+export function drawBattleHud({s,w,h,ids,screen,capRect,toggleNode,padNode,settingsOpen,volume,onToggle,drawUpgrade,add,box,type,images,drawIcon,drawTowerIcon=drawIcon,hit}){
     const ink=0x322e23,paper=0xf0e6cd,cream=0xf9f1dc;
     const left=50,right=w-54;
     function meter(y,ratio,color){box(left,y,225,10,0x726b59,4,1);if(ratio>0)box(left+1,y+1,223*Math.min(1,ratio),8,color,3,0);}
@@ -40,7 +40,7 @@ export function drawBattleHud({s,w,h,ids,screen,capRect,toggleNode,padNode,setti
       ring.fillStyle(0x31392d,.26).fillCircle(jx,jy,radius).lineStyle(3,cream,.68).strokeCircle(jx,jy,radius);
       ring.fillStyle(cream,.8).fillCircle(jx+Number(shift[0])*sx,jy+Number(shift[1])*sy,radius*.38);
     }
-    const tools=ids['tower-tools'];if(tools){const towerTop=(h-(3*74+2*8))/2;type(right-74,towerTop-26,tools.children[0]?.textContent,14,85);Array.from(tools.children).filter(n=>n.tagName==='BUTTON').forEach((n,i)=>{const y=towerTop+i*82;box(right-74,y,74,74,n.disabled?0x999999:cream,8,3,0,.25);drawIcon(images(n)[0]+(n.disabled?"-disabled":""),right-37,y+27,46);type(right-37,y+52,['速射 ◆3','冰晶 ◆5','爆裂 ◆7'][i],13,72,true,true);hit(n,right-74,y,74,74);});}
+    const tools=ids['tower-tools'];if(tools){const towerTop=(h-(3*74+2*8))/2;type(right-74,towerTop-26,tools.children[0]?.textContent,14,85);Array.from(tools.children).filter(n=>n.tagName==='BUTTON').forEach((n,i)=>{const y=towerTop+i*82;box(right-74,y,74,74,n.disabled?0x999999:cream,8,3,0,.25);drawTowerIcon(images(n)[0]+(n.disabled?"-disabled":""),right-37,y+27,46);type(right-37,y+52,['速射 ◆3','冰晶 ◆5','爆裂 ◆7'][i],13,72,true,true);hit(n,right-74,y,74,74);});}
     const up=ids['tower-upgrade'];
     if(up&&!up.hidden&&s.defenses?.selectedTower){
       drawUpgrade(up);

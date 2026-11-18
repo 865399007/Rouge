@@ -1657,3 +1657,11 @@ kbd {
 .canvas-hud-controls { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
 .canvas-hud-controls > * { position: absolute; margin: 0; padding: 0; opacity: 0; pointer-events: auto; touch-action: manipulation; }
 .canvas-hud-controls > :focus-visible { opacity: 1; background: transparent; border: 0; outline: 2px solid #ffcf57; }
+
+.canvas-hud-controls > .tower-hud-target {
+  display: grid; place-items: start center; opacity: 1; background: transparent;
+  border: 0; box-shadow: none; appearance: none; color: inherit;
+}
+.canvas-hud-controls > .tower-hud-target[hidden] { display: none; }
+.tower-hud-target img { margin-top: 5.4%; width: 62.2%; height: 62.2%; object-fit: contain; pointer-events: none; }
+.tower-hud-target:disabled img { filter: grayscale(1); }

@@ -2,10 +2,7 @@ import { drawBattleHud, hudBrushes } from "./battle-hud.js";
 
 export function preloadHud(scene) {
   scene.load.image("ui-roll", "./assets/ui-roll.png");
-  for (const key of ["build-rapid", "build-frost", "build-blast"]) {
-    scene.load.image(key + "-disabled", "./assets/" + key + "-disabled.png");
-    scene.load.image(key, "./assets/"+key+".png");
-  }
+
 }
 
 export function attachBrowserHud(game) {
@@ -28,6 +25,11 @@ export function attachBrowserHud(game) {
         proxy.oninput=()=>{node.value=proxy.value;node.dispatchEvent(new Event("input"));last=0;};
       }else{
         proxy.onclick=()=>{if(!node.disabled){node.click();last=0;}};
+      }
+      if(node.parentElement?.id==="tower-tools"){
+        const image=node.querySelector("img").cloneNode(false);
+        proxy.className="tower-hud-target";
+        proxy.append(image);
       }
       proxy.setAttribute("aria-label",node.getAttribute("aria-label")||node.title||node.textContent);
       controls.append(proxy);
@@ -57,7 +59,7 @@ export function attachBrowserHud(game) {
     const rect=root.getBoundingClientRect();
     const w=game.scale.width,h=game.scale.height;
     const brushes=hudBrushes(s,layer);
-    const slider=drawBattleHud({s,w,h,ids,screen:{windowWidth:rect.width,windowHeight:rect.height},toggleNode:toggle,padNode:pad,settingsOpen:settings,volume:Number(ids.volume.value),onToggle(){settings=!settings;last=0;},...brushes,hit:bind,drawUpgrade(up){
+    const slider=drawBattleHud({s,w,h,ids,screen:{windowWidth:rect.width,windowHeight:rect.height},toggleNode:toggle,padNode:pad,settingsOpen:settings,volume:Number(ids.volume.value),onToggle(){settings=!settings;last=0;},...brushes,drawTowerIcon(){ /* The native button owns its persistent icon. */ },hit:bind,drawUpgrade(up){
       const tower=s.defenses.selectedTower,view=s.cameras.main.worldView;
       const x=(tower.x-view.x)*w/view.width,y=(tower.s.y-view.y)*h/view.height;
       brushes.box(x-85,y-21,170,42,brushes.cream);
