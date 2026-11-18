@@ -28,21 +28,24 @@ export class Defenses {
     this.tools.replaceChildren();
     this.counter=document.createElement("output");
     this.tools.append(this.counter);
+    this.wheel=document.createElement("div");
+    this.wheel.className="placement-wheel";
+    this.wheel.hidden=true;
+    this.knob=document.createElement("i");
+    this.wheel.append(this.knob);
+    this.tools.append(this.wheel);
     this.buttons=types.map(type=>{
       const button=document.createElement("button");
-      const emblem=document.createElement("strong");
-      emblem.textContent=type.icon;
-      emblem.style.color="#"+type.color.toString(16);
-      const label=document.createElement("span");
-      label.textContent=type.name+" · "+type.cost;
-      button.append(emblem,label);
-      button.title="拖到角色附近建造，消耗 "+type.cost+" 材料";
+      button.textContent=type.icon+" "+type.name+" · "+type.cost;
+      button.title="按住并拖入轮盘选择位置，松手建造";
       this.tools.append(button);
       button.onpointerdown=event=>{
         if(scene.mode!=="play" || this.drag || event.button!==0)return;
         event.preventDefault();
         button.setPointerCapture(event.pointerId);
         this.drag={id:event.pointerId,type,x:event.clientX,y:event.clientY};
+        this.wheel.style.top=(button.offsetTop+button.offsetHeight/2)+"px";
+        this.wheel.hidden=false;
         this.drawPreview();
       };
       button.onpointermove=event=>{
@@ -54,7 +57,7 @@ export class Defenses {
         if(this.drag?.id!==event.pointerId)return;
         Object.assign(this.drag,{x:event.clientX,y:event.clientY});
         const point=this.location();
-        if(scene.mode==="play" && this.valid(point))this.build(type,point);
+        if(scene.mode==="play" && point && this.valid(point))this.build(type,point);
         this.cancel();
       };
       button.onlostpointercapture=button.onpointercancel=event=>{
@@ -68,18 +71,26 @@ export class Defenses {
     this.counter.textContent="材料 "+this.stock;
     this.buttons.forEach((button,i)=>button.disabled=this.stock<types[i].cost);
   }
-  cancel(){this.drag=null;this.preview.clear()}
+  cancel(){
+    this.drag=null;
+    this.wheel.hidden=true;
+    this.preview.clear();
+  }
   location(){
-    const canvas=this.scene.game.canvas;
-    const rect=canvas.getBoundingClientRect();
-    return this.scene.cameras.main.getWorldPoint(
-      (this.drag.x-rect.left)*this.scene.scale.width/rect.width,
-      (this.drag.y-rect.top)*this.scene.scale.height/rect.height);
+    const rect=this.wheel.getBoundingClientRect();
+    const radius=rect.width/2;
+    const dx=this.drag.x-rect.left-radius;
+    const dy=this.drag.y-rect.top-radius;
+    if(!radius || Math.hypot(dx,dy)>radius){
+      this.knob.style.transform="translate(-50%, -50%)";
+      return null;
+    }
+    this.knob.style.transform=`translate(-50%, -50%) translate(${dx}px, ${dy}px)`;
+    const player=this.scene.player;
+    return {x:player.x+dx/radius*reach,y:player.y+dy/radius*reach};
   }
   valid(point){
-    const {x,y,type}=this.drag;
-    return document.elementFromPoint(x,y)===this.scene.game.canvas &&
-      this.stock>=type.cost && this.scene.distance(point,this.scene.player)<=reach &&
+    return this.stock>=this.drag.type.cost &&
       point.x>=halfTower && point.y>=halfTower &&
       point.x<=this.width-halfTower && point.y<=this.height-halfTower &&
       !this.overlaps(point,this.scene.player,25) &&
@@ -108,9 +119,10 @@ export class Defenses {
   drawPreview(){
     if(!this.drag)return;
     const point=this.location(), player=this.scene.player;
+    this.preview.clear().lineStyle(2,0xd7efdc,.8).strokeCircle(player.x,player.y,reach);
+    if(!point)return;
     const color=this.valid(point)?0x90f4aa:0xff7777;
-    this.preview.clear().lineStyle(2,0xd7efdc,.8).strokeCircle(player.x,player.y,reach)
-      .fillStyle(color,.6).fillRect(point.x-halfTower,point.y-halfTower,2*halfTower,2*halfTower);
+    this.preview.fillStyle(color,.6).fillRect(point.x-halfTower,point.y-halfTower,2*halfTower,2*halfTower);
   }
   confine(sprite,padding){
     sprite.x=clamp(sprite.x,padding,this.width-padding);
