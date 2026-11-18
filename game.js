@@ -1455,7 +1455,7 @@ class ge extends Lt.Scene {
       }
     }
     this.ring.setVisible(nearestAngle === undefined);
-    if (!this.directionRing) {
+    if (!this.directionRing?.scene) {
       const radius = this.ring.radius, gap = 0.28;
       this.directionRing = this.add.graphics().setDepth(this.ring.depth);
       this.directionRing.lineStyle(2, 0xffe7a0, .85).beginPath()
