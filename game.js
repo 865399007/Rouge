@@ -602,7 +602,6 @@ class ge extends Lt.Scene {
       (this.ring = this.add
         .circle(450, 310, 28 * BALANCE.player.visualScale)
         .setStrokeStyle(2, 0xffe7a0, 0.65)),
-      (this.targetArrow = this.add.triangle(0,0,0,0,12,5,0,10,0xffdc78).setStrokeStyle(1,0x332c23).setDepth(5).setVisible(false)),
       (this.defenses = new Defenses(this)),
       this.player.setPosition(
         this.defenses.width / 2,
@@ -1455,13 +1454,18 @@ class ge extends Lt.Scene {
         nearestAngle = Math.atan2(dy,dx);
       }
     }
-    this.targetArrow.setVisible(nearestAngle !== undefined);
-    if (nearestAngle !== undefined) {
-      const radius = this.ring.radius + 3;
-      this.targetArrow.setRotation(nearestAngle).setPosition(
-        this.player.x + radius*Math.cos(nearestAngle),
-        this.player.y + 14*this.player.scaleY + radius*Math.sin(nearestAngle));
+    this.ring.setVisible(nearestAngle === undefined);
+    if (!this.directionRing) {
+      const radius = this.ring.radius, gap = 0.28;
+      this.directionRing = this.add.graphics().setDepth(this.ring.depth);
+      this.directionRing.lineStyle(2, 0xffe7a0, .85).beginPath()
+        .arc(0, 0, radius, gap, Math.PI * 2 - gap)
+        .lineTo(radius + 7, 0)
+        .lineTo(radius * Math.cos(gap), radius * Math.sin(gap)).strokePath();
     }
+    this.directionRing.setVisible(nearestAngle !== undefined)
+      .setPosition(this.player.x, this.player.y + 14 * this.player.scaleY)
+      .setRotation(nearestAngle ?? 0);
     updateSupply(this,K);
     if (
       (this.defenses.confine(this.player, 25),
