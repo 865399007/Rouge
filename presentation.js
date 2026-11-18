@@ -350,7 +350,7 @@ export function drawGround(scene, x, y, random, solids) {
   const palette = habitats[scene.profile.stage] || habitats[0];
   const upright = [];
   const placed = [];
-  const count = 3 + Math.floor(random()*4);
+  const count = 2 + Math.floor(random()*2);
   // Reserve one main silhouette, then sample the smaller props without replacement.
   const pool = [prop, ...new Set(palette.slice(1).filter(name => name !== prop))];
   const main = random() < .52 ? landmark : palette[0];
@@ -360,13 +360,13 @@ export function drawGround(scene, x, y, random, solids) {
     const scale = i===0 ? 1.15+random()*.65 : .58+random()*.54;
     let px,py,clear=false;
     for (let attempt=0; attempt<12 && !clear; attempt++) {
-      px=74+random()*452; py=100+random()*445;
-      clear=placed.every(point=>Math.hypot(px-point.x,py-point.y)>78*scale);
+      px=105+random()*390; py=105+random()*390;
+      clear=placed.every(point=>Math.hypot(px-point.x,py-point.y)>80 + 48*(scale + point.scale));
     }
     if (!clear) continue;
     // Leave the initial deployment point clear for every stage and screen size.
     if (Math.hypot(x*600+px-scene.defenses.width/2,y*600+py-scene.defenses.height/2)<145) continue;
-    placed.push({x:px,y:py});
+    placed.push({x:px,y:py,scale});
     const sprite=scene.add.image(x*600+px,y*600+py,"scenery-"+key)
       .setOrigin(.5,.88).setScale(scale).setFlipX(random()<.5);
     if(flatScenery.has(key)){
