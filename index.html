@@ -71,7 +71,18 @@
             <div class="bar"><i></i></div>
           </div>
           <aside id="tower-tools" aria-label="拖动建造防御塔"></aside>
-          <div class="placement-notice" role="status">战斗已暂停 · 松手建造，移出轮盘取消</div>
+          <div class="placement-notice" role="status">
+            战斗已暂停 · 松手建造，移出轮盘取消
+          </div>
+          <button
+            id="roll"
+            class="roll-button"
+            type="button"
+            aria-label="翻滚，冷却5秒，期间无敌，快捷键Shift"
+          >
+            <span aria-hidden="true">↻</span><strong>翻滚</strong
+            ><small>SHIFT · 就绪</small>
+          </button>
           <section
             id="skills"
             class="equipment hud-panel"
@@ -84,7 +95,7 @@
           </section>
           <div class="controls-hint">
             <kbd>W A S D</kbd> 移动 <span>·</span> 自动攻击 <span>·</span>
-            <kbd>SPACE</kbd> 暂停
+            <kbd>SHIFT</kbd> 翻滚 <span>·</span> <kbd>SPACE</kbd> 暂停
           </div>
         </div>
       </div>

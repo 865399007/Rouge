@@ -84,7 +84,7 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
     for (const [n, label, text] of [
       ["01", "保持移动", "自动攻击 · 走位生存"],
       ["02", "收集与进化", "拾取晶体 · 搭配技能"],
-      ["03", "建立防线", "击败首领 · 建造圆塔"],
+        ["03", "建立防线", "猎杀精英与首领 · 建塔并守护"],
     ]) {
       const row = el("div", "briefing-item");
       row.append(

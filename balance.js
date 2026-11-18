@@ -7,6 +7,10 @@ export const BALANCE = {
   bossWarning: 8,
   enemyCap: 240,
   initialMaterials: 3,
+  elites: { first: 25, interval: 30 },
+  siege: { aggroRange: 240, windup: 0.4, cooldown: 1.1 },
+  fortification: { perMinute: 0.07, maxMinutes: 10 },
+  roll: { cooldown: 5, duration: 0.3, distance: 150 },
   skillLevelGates: [1, 3, 6, 10, 15],
   damageScales: [1, 1.22, 1.48, 1.78, 2.12],
   cooldownScales: [1, 0.96, 0.92, 0.88, 0.84],
@@ -31,6 +35,7 @@ export const TOWER_TUNING = [
     name: "速射塔",
     icon: "➶",
     cost: 3,
+    hp: 180,
     color: 0xf4c875,
     range: 300,
     cooldown: 0.6,
@@ -41,6 +46,7 @@ export const TOWER_TUNING = [
     name: "冰晶塔",
     icon: "❄",
     cost: 5,
+    hp: 240,
     color: 0x94e4ff,
     range: 260,
     cooldown: 1.8,
@@ -51,6 +57,7 @@ export const TOWER_TUNING = [
     name: "爆裂塔",
     icon: "✹",
     cost: 7,
+    hp: 320,
     color: 0xff9468,
     range: 280,
     cooldown: 2.5,
@@ -61,6 +68,13 @@ export const TOWER_TUNING = [
 
 export function xpToNext(level) {
   return Math.ceil(30 + 10 * level + 2 * level ** 1.7);
+}
+export function towerMaxHp(type, seconds = 0) {
+  const minute = Math.max(
+    0,
+    Math.min(BALANCE.fortification.maxMinutes, Math.floor(seconds / 60)),
+  );
+  return Math.round(type.hp * (1 + minute * BALANCE.fortification.perMinute));
 }
 export function spawnInterval(seconds, bossAlive = false) {
   return Math.max(0.22, 0.78 / (1 + seconds / 140)) * (bossAlive ? 1.35 : 1);
@@ -94,6 +108,26 @@ export function enemyKind(seconds, roll) {
   if (seconds >= 25 && roll > 0.6) return "runner";
   return "bug";
 }
+export function eliteStats(seconds) {
+  const base = enemyStats("brute", seconds);
+  const hp = Math.round(base.hp * 2.6);
+  return {
+    ...base,
+    hp,
+    maxHp: hp,
+    elite: true,
+    kind: "brute",
+    r: 30,
+    speed: Math.round(base.speed * 1.15),
+    damage: Math.round(base.damage * 1.35),
+    xp: 12,
+    materials: seconds < 180 ? 1 : 2,
+  };
+}
+export function materialDrop(enemy) {
+  if (!enemy.boss && !enemy.elite) return 0;
+  return Math.max(0, Math.floor(enemy.materials ?? (enemy.boss ? 3 : 1)));
+}
 export function bossStats(index) {
   const final = index === BALANCE.bosses.length - 1;
   const hp = final
@@ -112,7 +146,7 @@ export function bossStats(index) {
     shot: 2,
     shotCooldown: final ? 1.7 : 2.8,
     bulletSpeed: final ? 205 : 175,
-    materials: final ? 0 : 3 + Math.floor(index / 3),
+    materials: final ? 6 : 3 + Math.floor(index / 3),
   };
 }
 export function skillStats(skill, level = skill.level || 1, build) {

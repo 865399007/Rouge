@@ -4,6 +4,23 @@ export function circlesOverlap(a, aRadius, b, bRadius) {
   return Math.hypot(a.x - b.x, a.y - b.y) < aRadius + bRadius;
 }
 
+// First intersection along a projectile's step, including fast crossings.
+export function segmentCircleEntry(from, to, center, radius) {
+  const x = from.x - center.x,
+    y = from.y - center.y;
+  const dx = to.x - from.x,
+    dy = to.y - from.y;
+  const c = x * x + y * y - radius * radius;
+  if (c <= 0) return 0;
+  const a = dx * dx + dy * dy;
+  if (!a) return null;
+  const b = x * dx + y * dy,
+    discriminant = b * b - a * c;
+  if (discriminant < 0) return null;
+  const t = (-b - Math.sqrt(discriminant)) / a;
+  return t >= 0 && t <= 1 ? t : null;
+}
+
 // Small swept steps prevent knockback from tunnelling through towers. Projection
 // along the contact normal lets characters slide around the actual round base.
 export function moveCircle(actor, dx, dy, radius, towers, width, height) {

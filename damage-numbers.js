@@ -5,7 +5,11 @@ export class DamageNumbers {
     this.items = [];
     this.pending = new WeakMap();
   }
-  add(enemy, amount, { crit = false, dot = false, element = "physical" } = {}) {
+  add(
+    enemy,
+    amount,
+    { crit = false, dot = false, element = "physical", structure = false } = {},
+  ) {
     if (amount <= 0 || !Number.isFinite(amount)) return;
     const now = this.scene.combat.time,
       key = dot ? "dot" : crit ? "crit" : "normal";
@@ -27,17 +31,19 @@ export class DamageNumbers {
     const sprite = this.scene.add
       .text(
         enemy.s.x + ((this.items.length % 3) - 1) * 13,
-        enemy.s.y - enemy.r - 8,
+        enemy.s.y - enemy.r - (structure ? 38 : 8),
         `${crit ? "暴击 " : ""}${Math.max(1, Math.round(amount))}`,
         {
           fontFamily: "Arial, Microsoft YaHei, sans-serif",
           fontSize: crit ? "20px" : dot ? "13px" : "16px",
           fontStyle: "bold",
-          color: crit
-            ? "#ffe27b"
-            : dot
-              ? colors[element] || "#c8d5ef"
-              : "#fff7dd",
+          color: structure
+            ? "#ff9a80"
+            : crit
+              ? "#ffe27b"
+              : dot
+                ? colors[element] || "#c8d5ef"
+                : "#fff7dd",
           stroke: "#302b25",
           strokeThickness: 3,
         },

@@ -3,6 +3,7 @@ import {
   xpToNext,
   spawnInterval,
   enemyStats,
+  eliteStats,
   enemyKind,
   bossStats,
 } from "./balance.js";
@@ -21,6 +22,8 @@ import {
 } from "./presentation.js";
 import Lt from "./vendor/phaser.js";
 import { Defenses } from "./defenses.js";
+import { segmentCircleEntry } from "./geometry.js";
+import { Roll } from "./roll.js";
 import { skills as Et, renderLoadout, castArt } from "./battle-skills.js";
 (function () {
   const b = document.createElement("link").relList;
@@ -555,6 +558,7 @@ class ge extends Lt.Scene {
       (this.wave = 1),
       (this.elapsed = 0),
       (this.spawnClock = 0),
+      (this.nextEliteAt = BALANCE.elites.first),
       (this.fireClock = 0),
       (this.invincible = 0),
       (this.mode = "ready"),
@@ -602,6 +606,7 @@ class ge extends Lt.Scene {
         if (!event.target.closest("button,input,summary")) this.pauseGame();
       }),
       this.input.keyboard.addCapture(["UP", "DOWN", "LEFT", "RIGHT"]),
+      (this.roll = new Roll(this)),
       (this.timerText = this.add
         .text(450, 26, "00:30", {
           fontFamily: "sans-serif",
@@ -695,6 +700,7 @@ class ge extends Lt.Scene {
   beginPlacement() {
     if (this.mode !== "play") return;
     this.mode = "placement";
+    this.roll.sync();
     this.accumulator = 0;
     wt();
     Tt.enabled = false;
@@ -708,6 +714,7 @@ class ge extends Lt.Scene {
     if (this.mode !== "placement") return;
     this.accumulator = 0;
     this.mode = "play";
+    this.roll?.sync();
     Tt.enabled = true;
     this.tweens.resumeAll();
     pt.setActive(true);
@@ -1190,6 +1197,17 @@ class ge extends Lt.Scene {
       )
         ((this.accumulator -= 1 / 30), this.step(this.runTime * 1e3, 1e3 / 30));
   }
+  movementInput() {
+    if (Tt.x || Tt.y) return { x: Tt.x, y: Tt.y };
+    return {
+      x:
+        Number(this.keys.D.isDown || this.keys.RIGHT.isDown) -
+        Number(this.keys.A.isDown || this.keys.LEFT.isDown),
+      y:
+        Number(this.keys.S.isDown || this.keys.DOWN.isDown) -
+        Number(this.keys.W.isDown || this.keys.UP.isDown),
+    };
+  }
   step(b, Y) {
     if ((pt.setActive(this.mode === "play"), this.mode !== "play")) return;
     let K = Math.min(Y, 50) / 1e3;
@@ -1242,32 +1260,28 @@ class ge extends Lt.Scene {
       this.finish(!1);
       return;
     }
-    let Z =
-        Number(this.keys.D.isDown || this.keys.RIGHT.isDown) -
-        Number(this.keys.A.isDown || this.keys.LEFT.isDown),
-      p =
-        Number(this.keys.S.isDown || this.keys.DOWN.isDown) -
-        Number(this.keys.W.isDown || this.keys.UP.isDown);
-    (Tt.x || Tt.y) && ((Z = Tt.x), (p = Tt.y));
-    let S = Math.hypot(Z, p);
+    const input = this.movementInput();
+    const S = Math.hypot(input.x, input.y);
+    const rolling = this.roll.step(K, input);
+    if (!rolling) {
+      if (S)
+        this.defenses.move(
+          this.player,
+          (input.x / S) * this.speed * K,
+          (input.y / S) * this.speed * K,
+          25,
+        );
+      this.player.rotation = S ? Math.sin(b * 0.018) * 0.08 : 0;
+    }
     if (
-      (S
-        ? (this.defenses.move(
-            this.player,
-            (Z / S) * this.speed * K,
-            (p / S) * this.speed * K,
-            25,
-          ),
-          (this.player.rotation = Math.sin(b * 0.018) * 0.08))
-        : (this.player.rotation = 0),
-      this.defenses.confine(this.player, 25),
+      (this.defenses.confine(this.player, 25),
       this.player.setAlpha(this.invincible > 0 ? 0.55 : 1),
       this.ring.setPosition(this.player.x, this.player.y + 14),
       (this.cleanupClock -= K),
       this.cleanupClock <= 0 &&
         ((this.cleanupClock = 1),
         (this.enemies = this.enemies.filter((t) =>
-          !t.boss && this.distance(this.player, t.s) > 1600
+          !t.boss && !t.elite && this.distance(this.player, t.s) > 1600
             ? (t.s.destroy(), !1)
             : !0,
         )),
@@ -1288,17 +1302,38 @@ class ge extends Lt.Scene {
         Math.sin(angle) * 430,
       );
       if (point) {
-        const kind = enemyKind(this.runTime, this.build.random());
+        const elite = this.runTime >= this.nextEliteAt;
+        const kind = elite
+          ? "brute"
+          : enemyKind(this.runTime, this.build.random());
         this.enemies.push({
-          ...enemyStats(kind, this.runTime),
+          ...(elite
+            ? eliteStats(this.runTime)
+            : enemyStats(kind, this.runTime)),
           kind,
-          s: this.add.image(point.x, point.y, kind).setDepth(4),
+          s: this.add
+            .image(point.x, point.y, kind)
+            .setDepth(4)
+            .setScale(elite ? 1.25 : 1),
         });
+        if (elite) this.nextEliteAt = this.runTime + BALANCE.elites.interval;
       }
     }
     this.enemyTelegraphs.clear();
     for (let t of this.enemies) {
       this.defenses.confine(t.s, t.r);
+      if (t.elite) {
+        const x = t.s.x,
+          y = t.s.y - t.r - 10;
+        this.enemyTelegraphs
+          .lineStyle(3, 0xf4c875, 0.95)
+          .strokeCircle(t.s.x, t.s.y, t.r + 4)
+          .fillStyle(0x302b25)
+          .fillRect(x - 26, y, 52, 7)
+          .fillStyle(0xf4c875)
+          .fillRect(x - 24, y + 2, (48 * t.hp) / t.maxHp, 3)
+          .fillTriangle(x - 7, y - 5, x + 7, y - 5, x, y - 16);
+      }
       if (t.flashUntil && t.flashUntil <= this.combat.time) {
         t.s.setTexture(t.normalTexture);
         t.flashUntil = 0;
@@ -1312,8 +1347,12 @@ class ge extends Lt.Scene {
         t.frozenUntil = 0;
       }
 
+      const towerTarget = this.defenses.targetFor(t);
+      if (towerTarget !== t.towerTarget) t.towerWindup = null;
+      t.towerTarget = towerTarget;
+      const attackTarget = towerTarget || this.player;
       if ((t.ranged || t.boss) && t.shot < 0.55) {
-        const a = Math.atan2(this.player.y - t.s.y, this.player.x - t.s.x);
+        const a = Math.atan2(attackTarget.y - t.s.y, attackTarget.x - t.s.x);
         this.enemyTelegraphs
           .lineStyle(2, 0xe16b4a, 0.8)
           .strokeCircle(t.s.x, t.s.y, t.r + 7)
@@ -1324,8 +1363,8 @@ class ge extends Lt.Scene {
             t.s.y + Math.sin(a) * (t.r + 36),
           );
       }
-      let l = this.player.x - t.s.x,
-        c = this.player.y - t.s.y,
+      let l = attackTarget.x - t.s.x,
+        c = attackTarget.y - t.s.y,
         h = Math.hypot(l, c);
       if (
         (h > 0 &&
@@ -1351,8 +1390,9 @@ class ge extends Lt.Scene {
           damage: t.damage ?? 10,
         });
       }
+      this.defenses.attackTower(t, K);
       if (
-        h < t.r + 18 &&
+        this.distance(this.player, t.s) < t.r + 18 &&
         this.invincible <= 0 &&
         (this.combat.receive(t.damage ?? 9, t),
         (this.invincible = BALANCE.player.invulnerability),
@@ -1366,7 +1406,7 @@ class ge extends Lt.Scene {
     }
     for (let t = this.bullets.length - 1; t >= 0 && this.mode === "play"; t--) {
       let l = this.bullets[t];
-      if(l.returning)l.s.rotation+=K*10;
+      if (l.returning) l.s.rotation += K * 10;
       if (((l.age = (l.age || 0) + K), l.homing && this.enemies.length)) {
         const c = this.enemies.reduce((r, n) =>
             this.distance(l.s, n.s) < this.distance(l.s, r.s) ? n : r,
@@ -1419,16 +1459,29 @@ class ge extends Lt.Scene {
     }
     for (let t = this.hostile.length - 1; t >= 0; t--) {
       const l = this.hostile[t];
-      ((l.s.x += l.vx * K),
-        (l.s.y += l.vy * K),
-        (l.life -= K),
-        this.distance(this.player, l.s) < 22 &&
-          this.invincible <= 0 &&
-          (this.combat.receive(l.damage ?? 10),
-          (this.invincible = BALANCE.player.invulnerability),
-          (l.life = 0),
-          this.hp <= 0 && this.finish(!1)),
-        l.life <= 0 && (l.s.destroy(), this.hostile.splice(t, 1)));
+      const from = { x: l.s.x, y: l.s.y };
+      l.s.x += l.vx * K;
+      l.s.y += l.vy * K;
+      l.life -= K;
+      const towerHit = this.defenses.projectileHit(from, l.s);
+      const playerHit =
+        this.invincible <= 0
+          ? segmentCircleEntry(from, l.s, this.player, 22)
+          : null;
+      if (towerHit && (playerHit === null || towerHit.time <= playerHit)) {
+        this.defenses.damage(towerHit.tower, l.damage ?? 10);
+        l.life = 0;
+      } else if (playerHit !== null) {
+        this.combat.receive(l.damage ?? 10);
+        this.invincible = BALANCE.player.invulnerability;
+        l.life = 0;
+        if (this.hp <= 0) this.finish(!1);
+      }
+      if (l.life <= 0) {
+        l.s.destroy();
+        this.hostile.splice(t, 1);
+      }
+      if (this.mode !== "play") break;
     }
     if (
       this.mode === "play" &&

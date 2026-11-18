@@ -1444,7 +1444,90 @@ kbd {
     margin-bottom: 5px;
   }
 }
-.class-card .class-portrait{left:auto;top:auto}
-.placement-notice {display:none;position:absolute;left:50%;top:22%;transform:translateX(-50%);padding:9px 16px;background:#f2e7ccee;border:2px solid #302e26;border-radius:8px;color:#514c3b;font-size:12px;text-align:center;pointer-events:none;max-width:90%;}
-.is-placing .placement-notice {display:block;}
-.is-placing #tower-tools .build-tip {color:#714b2b;font-weight:bold;}
+.class-card .class-portrait {
+  left: auto;
+  top: auto;
+}
+.placement-notice {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  padding: 9px 16px;
+  background: #f2e7ccee;
+  border: 2px solid #302e26;
+  border-radius: 8px;
+  color: #514c3b;
+  font-size: 12px;
+  text-align: center;
+  pointer-events: none;
+  max-width: 90%;
+}
+.is-placing .placement-notice {
+  display: block;
+}
+.is-placing #tower-tools .build-tip {
+  color: #714b2b;
+  font-weight: bold;
+}
+.roll-button {
+  position: absolute;
+  right: 26px;
+  bottom: 108px;
+  width: 80px;
+  height: 80px;
+  border: 3px solid #302e26;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  color: #302e26;
+  background:
+    radial-gradient(circle, #efe4c9 61%, transparent 63%),
+    conic-gradient(#98bb74 var(--roll-ready, 100%), #847d6b 0);
+  box-shadow: 0 4px 0 #302e2640;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: pointer;
+}
+.roll-button span {
+  font-size: 27px;
+  line-height: 26px;
+}
+.roll-button strong {
+  font-size: 13px;
+}
+.roll-button small {
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.roll-button:disabled {
+  cursor: default;
+  color: #665f4d;
+}
+.roll-button.is-ready:enabled:hover {
+  filter: brightness(1.1);
+}
+.roll-button:focus-visible {
+  outline: 3px solid #fff1bc;
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .roll-button {
+    right: 18px;
+    bottom: 145px;
+    width: 76px;
+    height: 76px;
+  }
+}
+@media (max-height: 500px) and (min-width: 601px) {
+  .roll-button {
+    right: 154px;
+    bottom: 85px;
+    width: 70px;
+    height: 70px;
+  }
+}
