@@ -1,7 +1,9 @@
 import { BALANCE, skillStats } from "./balance.js";
 import { skills } from "./battle-skills.js";
 
+const weaponMasteryStep = 0.25;
 export const ATTRIBUTES = [
+  { id: "weaponMastery", name: "武器专精", description: "职业武器伤害 +25%", max: 5 },
   {
     id: "power",
     name: "火力训练",
@@ -44,6 +46,7 @@ export const ATTRIBUTES = [
 ];
 export class Build {
   constructor(seed = Math.floor(Math.random() * 0xffffffff)) {
+    this.heroLevel = 1;
     this.active = [];
     this.attributes = {};
     this.random = () => {
@@ -52,7 +55,10 @@ export class Build {
     };
   }
   get power() {
-    return 1 + 0.08 * (this.attributes.power || 0);
+    return (1 + 0.04 * (this.heroLevel - 1)) * (1 + 0.08 * (this.attributes.power || 0));
+  }
+  weaponDamage(base, level = this.attributes.weaponMastery || 0) {
+    return base * this.power * (1 + level * weaponMasteryStep);
   }
   get haste() {
     return 0.06 * (this.attributes.haste || 0);
@@ -168,12 +174,17 @@ export class Build {
 }
 
 export function upgradeDescription(choice, build) {
+  if (choice.id === "weaponMastery" && build.job) {
+    const { weapon, damage } = build.job;
+    const hit = level => Number(build.weaponDamage(damage, level).toFixed(1));
+    return `${weapon}伤害 +25%\n单次伤害 ${hit(choice.level - 1)} → ${hit(choice.level)}`;
+  }
   if (choice.kind !== "skill") return choice.description;
   const next = skillStats(choice, choice.level, build),
     old = choice.previous ? skillStats(choice, choice.previous, build) : null;
   const delta = (label, key, suffix = "") =>
     `${label} ${old ? old[key] + suffix + " → " : ""}${next[key]}${suffix}`;
-  let detail = `${choice.description}\n${delta(["pull", "drain"].includes(choice.type) ? "每跳伤害" : "命中伤害", "damage")} · ${delta("冷却", "cooldown", "s")}`;
+  let detail = `${choice.description}\n${delta(["pull", "drain"].includes(choice.type) ? "每跳伤害" : "命中伤害", "damage")}\n${delta("冷却", "cooldown", "s")}`;
   if (choice.type === "chain") detail += `\n${delta("连锁目标", "links")}`;
   else if (choice.type === "projectile")
     detail += `\n${delta("弹数", "projectiles")}（多弹每发 72% 伤害）`;
@@ -181,6 +192,6 @@ export function upgradeDescription(choice, build) {
     detail += `\n${delta("星刃数量", "blades")}`;
   else detail += `\n${delta("范围", "radius")}`;
   if (choice.level < 5)
-    detail += `\n下一阶需要角色 Lv.${BALANCE.skillLevelGates[choice.level]}`;
+    detail += `\n下阶需 Lv.${BALANCE.skillLevelGates[choice.level]}`;
   return detail;
 }

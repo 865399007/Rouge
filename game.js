@@ -2,6 +2,7 @@ import {
   BALANCE,
   xpToNext,
   spawnInterval,
+  packSize,
   enemyStats,
   eliteStats,
   enemyKind,
@@ -486,6 +487,7 @@ class ge extends Lt.Scene {
     this.job = null;
     this.weaponClock = 0;
     this.classTurrets = [];
+    this.constellation = null;
     this.damageNumbers = new DamageNumbers(this);
     this.events.once("shutdown", () => {
       this.panel?.destroy();
@@ -670,14 +672,14 @@ class ge extends Lt.Scene {
   }
   chooseClass() {
     this.showUpgradeCards(
-      "选择你的守夜职业",
-      "五种武器，五种战法。职业武器自动攻击，升级自由搭配技能。",
+      "选择职业",
+      "点选职业出发 · 武器自动攻击",
       CLASSES.map((job) => ({
         id: job.icon,
         title: job.name,
         job,
         levelText: job.weapon,
-        detail: `${job.description}\n生命 ${job.hp} · 移速 ${job.speed} · 护甲 ${job.armor}\n${job.weakness}`,
+        detail: `${job.strengths}\n生命 ${job.hp} · 护甲 ${job.armor}`,
         action: () => this.selectClass(job.id),
       })),
     );
@@ -795,6 +797,7 @@ class ge extends Lt.Scene {
     enemy.hp = Math.max(0, enemy.hp - actual);
     this.damageNumbers.add(enemy, actual, { ...meta, crit });
     if (!meta.dot) {
+      if (!enemy.boss && !enemy.ranged) enemy.contactBlockedUntil = this.combat.time + 0.2;
       // One restrained kick per burst; damage-over-time never shakes the view.
       const now = performance.now();
       if (
@@ -832,6 +835,7 @@ class ge extends Lt.Scene {
     return Math.hypot(b.x - Y.x, b.y - Y.y);
   }
   explode(b, Y, K, Q, radius = 68) {
+    this.combat.cancelArea(b,Y,radius);
     pt.play("explosion");
     const Z = this.add
       .circle(b, Y, radius, Q, 0.18)
@@ -1070,6 +1074,7 @@ class ge extends Lt.Scene {
     let choices;
     do {
       this.level++;
+      this.build.heroLevel = this.level;
       this.xp -= this.need;
       this.need = Ht(this.level);
       choices = this.build.options(this.level);
@@ -1080,16 +1085,16 @@ class ge extends Lt.Scene {
     }
     this.mode = "upgrade";
     this.showUpgradeCards(
-      `Lv.${this.level} · 选择本次成长`,
-      `技能 ${this.build.active.length}/4 · 伤害 +${Math.round((this.build.power - 1) * 100)}% · 护甲 ${this.build.armor} · 每次只选一项`,
+      `Lv.${this.level} · 选择升级`,
+      `技能 ${this.build.active.length}/4 · 伤害 +${Math.round((this.build.power - 1) * 100)}% · 护甲 ${this.build.armor}`,
       choices.map((choice) => ({
-        id: choice.kind === "attribute" ? "heal_supply" : choice.id,
+        id: choice.kind === "attribute" && choice.id !== "weaponMastery" ? "heal_supply" : choice.id,
         element: choice.element,
         title: choice.name,
         levelText:
           choice.kind === "skill"
             ? choice.previous
-              ? `技能 Lv.${choice.previous} → Lv.${choice.level}`
+              ? `Lv.${choice.previous} → ${choice.level}`
               : "获得新技能"
             : choice.kind === "attribute"
               ? `属性 ${choice.level}/${choice.max}`
@@ -1243,27 +1248,31 @@ class ge extends Lt.Scene {
         this.runTime,
         this.enemies.some((e) => e.boss),
       );
-      const angle = this.build.random() * Math.PI * 2;
-      const point = this.defenses.spawn(
-        Math.cos(angle) * 520,
-        Math.sin(angle) * 430,
-      );
-      if (point) {
-        const elite = this.runTime >= this.nextEliteAt;
-        const kind = elite
-          ? "brute"
-          : enemyKind(this.runTime, this.build.random());
-        this.enemies.push({
-          ...(elite
-            ? eliteStats(this.runTime)
-            : enemyStats(kind, this.runTime)),
-          kind,
-          s: this.add
-            .image(point.x, point.y, kind)
-            .setDepth(4)
-            .setScale(elite ? 1.25 : 1),
-        });
-        if (elite) this.nextEliteAt = this.runTime + BALANCE.elites.interval;
+      const count = Math.min(packSize(this.runTime), BALANCE.enemyCap - this.enemies.length);
+      const heading = this.build.random() * Math.PI * 2;
+      for (let i = 0; i < count; i++) {
+        const angle = heading + (i - (count - 1) / 2) * 0.11;
+        const point = this.defenses.spawn(
+          Math.cos(angle) * 520,
+          Math.sin(angle) * 430,
+        );
+        if (point) {
+          const elite = this.runTime >= this.nextEliteAt;
+          const kind = elite
+            ? "brute"
+            : enemyKind(this.runTime, this.build.random());
+          this.enemies.push({
+            ...(elite
+              ? eliteStats(this.runTime)
+              : enemyStats(kind, this.runTime)),
+            kind,
+            s: this.add
+              .image(point.x, point.y, kind)
+              .setDepth(4)
+              .setScale(elite ? 1.25 : 1),
+          });
+          if (elite) this.nextEliteAt = this.runTime + BALANCE.elites.interval;
+        }
       }
     }
     this.enemyTelegraphs.clear();
@@ -1311,32 +1320,36 @@ class ge extends Lt.Scene {
       let l = attackTarget.x - t.s.x,
         c = attackTarget.y - t.s.y,
         h = Math.hypot(l, c);
+      if (h > 0 && (!t.ranged || h > (t.reach || 260))) {
+        t.gait ??= t.s.x * 0.07;
+        t.gait += K * 3;
+        const side = (t.sway || 0) * Math.sin(t.gait);
+        const pulse = t.surge ? (Math.cos(t.gait) > 0.75 ? 1 + t.surge : 0.55) : 1;
+        const step = t.speed * (t.slow || 1) * K * pulse / (h * Math.hypot(1, side));
+        this.defenses.move(t.s, (l - c * side) * step, (c + l * side) * step, t.r);
+      }
       if (
-        (h > 0 &&
-          (!t.ranged || h > 260) &&
-          this.defenses.move(
-            t.s,
-            (l / h) * t.speed * (t.slow || 1) * K,
-            (c / h) * t.speed * (t.slow || 1) * K,
-            t.r,
-          ),
-        (t.s.rotation = Math.sin(b * 0.008 + t.s.x) * 0.07),
+        ((t.s.rotation = Math.sin(b * 0.008 + t.s.x) * 0.07),
         (t.ranged || t.boss) &&
           ((t.shot = (t.shot ?? 2) - K),
           t.shot <= 0 &&
             ((t.shot = t.shotCooldown ?? 2.4), this.hostile.length < 100)))
       ) {
-        const r = Math.atan2(c, l);
-        this.hostile.push({
-          s: this.add.image(t.s.x, t.s.y, "orb").setTint(14317688),
-          vx: Math.cos(r) * (t.bulletSpeed ?? 180),
-          vy: Math.sin(r) * (t.bulletSpeed ?? 180),
-          life: 4,
-          damage: t.damage ?? 10,
-        });
+        const count = t.shots || 1;
+        for (let i = 0; i < count && this.hostile.length < 100; i++) {
+          const r = Math.atan2(c, l) + (i - (count - 1) / 2) * (t.spread || 0);
+          this.hostile.push({
+            s: this.add.image(t.s.x, t.s.y, "orb").setTint(14317688),
+            vx: Math.cos(r) * (t.bulletSpeed ?? 180),
+            vy: Math.sin(r) * (t.bulletSpeed ?? 180),
+            life: 4,
+            damage: t.damage ?? 10,
+          });
+        }
       }
       if (
         this.distance(this.player, t.s) < t.r + 18 &&
+        (t.contactBlockedUntil || 0) <= this.combat.time &&
         this.invincible <= 0 &&
         (this.combat.receive(t.damage ?? 9, t),
         (this.invincible = BALANCE.player.invulnerability),
@@ -1364,6 +1377,11 @@ class ge extends Lt.Scene {
           (l.vy = Math.sin(c) * (l.returnSpeed ?? 430)),
           l.returned || (l.hit.clear(), (l.returned = !0)));
       }
+      if (this.combat.intercept(l, K)) {
+        l.s.destroy();
+        this.bullets.splice(t, 1);
+        continue;
+      }
       if (
         ((l.s.x += l.vx * K),
         (l.s.y += l.vy * K),
@@ -1377,6 +1395,11 @@ class ge extends Lt.Scene {
         if (l.returning) {
           trail.lineStyle(3, l.color, 0.9).beginPath().arc(0,0,15,0.5,4.8).strokePath();
         } else if (l.explosive || l.element === "poison") {
+          for (let i = 1; i < (l.skillLevel || 1); i++) {
+            const side = i % 2 ? 1 : -1;
+            trail.lineStyle(1.5, 0xbadf71, 0.85)
+              .strokeCircle(-7*i,side*(4+2*Math.sin(l.age*16+i)),2+i/2);
+          }
           trail.fillStyle(l.color, 0.5).fillCircle(-6,0,8).fillCircle(-15,-3,5)
             .fillStyle(0xfff1bb, 0.8).fillCircle(-2,0,3);
         } else {

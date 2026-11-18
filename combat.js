@@ -1,3 +1,4 @@
+import { segmentCircleEntry } from "./geometry.js";
 import { BALANCE, skillStats } from "./balance.js";
 import { castArt } from "./battle-skills.js";
 import { drawArc, drawOrbit } from "./presentation.js";
@@ -56,6 +57,40 @@ export class Combat {
     this.time = 0;
     this.zones = [];
     this.orbitHits = new WeakMap();
+  }
+  clash(index, x, y) {
+    const [orb] = this.s.hostile.splice(index, 1);
+    orb.s.destroy();
+    const spark = this.s.add.star(x, y, 4, 3, 12, 0xffeaa2).setDepth(8);
+    this.s.effect(spark, 0.16, 0, 0, 0.6);
+  }
+  cancelArea(x, y, radius, angle = 0, halfAngle = Math.PI) {
+    const orbs = this.s.hostile;
+    for (let i = orbs.length - 1; i >= 0; i--) {
+      const p = orbs[i].s, dx = p.x-x, dy = p.y-y;
+      if (Math.hypot(dx,dy) <= radius+5 &&
+          Math.cos(Math.atan2(dy,dx)-angle) >= Math.cos(halfAngle))
+        this.clash(i,p.x,p.y);
+    }
+  }
+  cancelLine(from, to, width) {
+    const orbs = this.s.hostile;
+    for (let i = orbs.length - 1; i >= 0; i--) {
+      const p = orbs[i].s;
+      if (segmentCircleEntry(from,to,p,width+5) !== null) this.clash(i,p.x,p.y);
+    }
+  }
+  intercept(shot, dt) {
+    let first = Infinity, index = -1;
+    for (let i=0; i<this.s.hostile.length; i++) {
+      const orb = this.s.hostile[i];
+      const end = { x: shot.s.x + (shot.vx-orb.vx)*dt, y: shot.s.y + (shot.vy-orb.vy)*dt };
+      const time = segmentCircleEntry(shot.s, end, orb.s, shot.returning ? 18 : 11);
+      if (time !== null && time < first) { first = time; index = i; }
+    }
+    if (index < 0) return false;
+    this.clash(index, shot.s.x + shot.vx*dt*first, shot.s.y + shot.vy*dt*first);
+    return true;
   }
   receive(amount) {
     const s = this.s;
@@ -136,7 +171,8 @@ export class Combat {
           const angle = this.time * 1.8 + (i * Math.PI * 2) / stat.blades,
             x = s.player.x + Math.cos(angle) * stat.radius,
             y = s.player.y + Math.sin(angle) * stat.radius;
-          drawOrbit(s.skillGraphics, x, y, color, angle);
+          this.cancelArea(x, y, 10);
+          drawOrbit(s.skillGraphics, x, y, color, angle, skill.level);
           for (const target of this.hash.query(x, y, 10))
             if ((this.orbitHits.get(target) || 0) <= this.time) {
               this.orbitHits.set(target, this.time + stat.cooldown);
@@ -181,6 +217,7 @@ export class Combat {
             : "pea",
     );
     const aoe = (x, y, r, amount) => {
+      this.cancelArea(x,y,r);
       s.impact(x, y, color, false, false);
       for (const enemy of this.hash.query(x, y, r))
         this.damage(enemy, amount, skill.element);
@@ -204,7 +241,8 @@ export class Combat {
         if (!next) break;
         const point = { x: next.s.x, y: next.s.y },
           g = s.add.graphics().setDepth(8);
-        drawArc(g, from, point, color);
+        this.cancelLine(from,point,3);
+        drawArc(g, from, point, color, skill.level);
         s.effect(g, 0.18);
         used.add(next);
         this.damage(next, damage * stat.decay ** i, skill.element);
@@ -216,6 +254,7 @@ export class Combat {
       if (this.zones.length >= 16) this.zones.shift();
       this.zones.push({
         owner: skill.id,
+        level: skill.level,
         kind: type,
         x: type === "trap" ? s.player.x : target.s.x,
         y: type === "trap" ? s.player.y : target.s.y,
@@ -231,6 +270,7 @@ export class Combat {
     }
     const angle = Math.atan2(target.s.y - s.player.y, target.s.x - s.player.x);
     if (type === "cone") {
+      this.cancelArea(s.player.x,s.player.y,radius,angle,1.1);
       for (const e of this.hash.query(s.player.x, s.player.y, radius)) {
         const offset =
           Math.atan2(e.s.y - s.player.y, e.s.x - s.player.x) - angle;
@@ -251,11 +291,20 @@ export class Combat {
       const g = s.add.graphics().setDepth(8),
         x = s.player.x + Math.cos(angle) * radius,
         y = s.player.y + Math.sin(angle) * radius;
+      this.cancelLine(s.player,{x,y},7);
       for (let offset of [-6, 6]) {
         const ox = -Math.sin(angle)*offset, oy = Math.cos(angle)*offset;
         g.lineStyle(2, color, 0.8).lineBetween(s.player.x+ox,s.player.y+oy,x+ox,y+oy);
       }
-      g.lineStyle(15, color, 0.24)
+      for (let i = 1; i < skill.level; i++) {
+        const t = i / skill.level;
+        const gate = 8 + 2 * skill.level;
+        const cx = s.player.x + (x-s.player.x)*t, cy = s.player.y + (y-s.player.y)*t;
+        g.lineStyle(2,color).strokeCircle(cx,cy,gate)
+          .lineStyle(2,0xffe49b).lineBetween(cx-Math.sin(angle)*gate,cy+Math.cos(angle)*gate,
+            cx+Math.sin(angle)*gate,cy-Math.cos(angle)*gate);
+      }
+      g.lineStyle(10 + 2 * skill.level, color, 0.24)
         .lineBetween(s.player.x, s.player.y, x, y)
         .lineStyle(3, 0xfff4d1)
         .lineBetween(s.player.x, s.player.y, x, y);
@@ -289,6 +338,7 @@ export class Combat {
         pierce: 1,
         color,
         element: skill.element,
+        skillLevel: skill.level,
         hit: new Set(),
         trail: 0,
         age: 0,
@@ -304,13 +354,19 @@ export class Combat {
         return false;
       const x = zone.kind === "drain" ? s.player.x : zone.x,
         y = zone.kind === "drain" ? s.player.y : zone.y;
+      const level = zone.level || 1;
       const targets = this.hash.query(x, y, zone.r);
       if (zone.kind === "trap") {
         g.fillStyle(zone.color, 0.16)
           .fillCircle(x, y, zone.r)
           .lineStyle(3, zone.color)
           .strokeTriangle(x, y - 10, x + 12, y + 9, x - 12, y + 9);
+        for (let i = 0; i < level; i++) {
+          const angle = this.time * 2 + i * Math.PI * 2 / level;
+          g.fillStyle(0xffdf91).fillCircle(x+18*Math.cos(angle),y+18*Math.sin(angle),3);
+        }
         if (!this.hash.query(x, y, 28).length) return true;
+        this.cancelArea(x,y,zone.r);
         for (const e of targets) this.damage(e, zone.damage, zone.element);
         s.impact(x, y, zone.color, false, true);
         return false;
@@ -319,15 +375,23 @@ export class Combat {
         .fillCircle(x, y, zone.r)
         .lineStyle(2, zone.color, 0.7)
         .strokeCircle(x, y, zone.r);
-      for (let i = 0; i < 4; i++) {
-        const phase = this.time * (zone.kind === "pull" ? 3 : -2) + i * Math.PI / 2;
-        const r = zone.r * (0.45 + 0.45 * ((this.time + i / 4) % 1));
+      for (let i = 0; i < level+2; i++) {
+        const phase = this.time * (zone.kind === "pull" ? 3 : -2) + i * Math.PI * 2 / (level+2);
+        const r = zone.r * (0.45 + 0.45 * ((this.time + i / (level+2)) % 1));
         g.lineStyle(3, zone.color, 0.65).beginPath().arc(x, y, r, phase, phase + 1.25).strokePath();
         g.fillStyle(0xffefd6, 0.85).fillCircle(x + r*Math.cos(phase), y + r*Math.sin(phase), 2);
+      }
+      if (zone.kind === "drain") {
+        for (const e of targets.slice(0, level)) {
+          const t = 1 - (this.time * 2 % 1);
+          g.lineStyle(1.5, zone.color, 0.65).lineBetween(e.s.x,e.s.y,x,y)
+            .fillStyle(0xfacde9).fillCircle(x+(e.s.x-x)*t,y+(e.s.y-y)*t,2+level/2);
+        }
       }
       zone.tick -= dt;
       if (zone.tick > 0) return true;
       zone.tick = 0.5;
+      this.cancelArea(x,y,zone.r);
       for (const e of targets) {
         if (zone.kind === "pull") {
           const d = Math.max(1, s.distance({ x, y }, e.s)),

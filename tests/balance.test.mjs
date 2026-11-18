@@ -117,11 +117,11 @@ test("升级卡与运行时共用伤害和冷却公式", () => {
     assert.ok(text.includes(String(stat.cooldown)));
   }
 });
-test("五职业的武器、参数和定位均不同", () => {
-  assert.equal(CLASSES.length, 5);
-  assert.equal(new Set(CLASSES.map((c) => c.texture)).size, 5);
-  assert.equal(new Set(CLASSES.map((c) => c.hp)).size, 5);
-  assert.equal(new Set(CLASSES.map((c) => c.id)).size, 5);
+test("六职业的武器、参数和定位均不同", () => {
+  assert.equal(CLASSES.length, 6);
+  assert.equal(new Set(CLASSES.map((c) => c.texture)).size, 6);
+  assert.equal(new Set(CLASSES.map((c) => c.hp)).size, 6);
+  assert.equal(new Set(CLASSES.map((c) => c.id)).size, 6);
 });
 function textStub() {
   return {
@@ -161,4 +161,20 @@ test("伤害跳字同目标短窗口合并、最多64条、到期清理", () => 
   assert.equal(numbers.items.length, 64);
   numbers.update(2);
   assert.equal(numbers.items.length, 0);
+});
+
+test("武器专精只强化自带武器，六职业预览与实战共用伤害计算", () => {
+  for (const job of CLASSES) {
+    const build = new Build(1);
+    build.job = job;
+    const scene = {hp: job.hp};
+    for (let level = 1; level <= 5; level++) {
+      const choice = {id: "weaponMastery", kind: "attribute", level};
+      assert.ok(upgradeDescription(choice, build).includes(job.weapon));
+      assert.ok(build.apply(choice, scene));
+      assert.equal(build.weaponDamage(job.damage), job.damage * (1 + level / 4));
+      assert.equal(build.power, 1);
+    }
+    assert.equal(build.apply({id: "weaponMastery", kind: "attribute"}, scene), false);
+  }
 });

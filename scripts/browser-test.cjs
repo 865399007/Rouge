@@ -8,7 +8,7 @@ const assert=require('node:assert/strict');
  await page.goto('http://127.0.0.1:5173/?debug');await page.waitForFunction(()=>window.__game?.scene.getScene('garden')?.player);
  await page.screenshot({path:'artifacts/welcome-desktop.png'});
  await page.getByRole('button',{name:/出发，守住/}).click();
- assert.equal(await page.locator('.choice-card').count(),5);
+ assert.equal(await page.locator('.choice-card').count(),6);
  await page.screenshot({path:'artifacts/skills-desktop.png'});
  await page.locator('.choice-card').filter({hasText:'游侠'}).click();
  await page.waitForTimeout(700);
@@ -46,12 +46,7 @@ const assert=require('node:assert/strict');
  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
  await page.screenshot({path:'artifacts/welcome-mobile.png'});
  await page.getByRole('button',{name:/出发，守住/}).click();await page.screenshot({path:'artifacts/skills-mobile.png'});
- const grid=await page.locator('.starter-grid').boundingBox();const cdp=await page.context().newCDPSession(page);
- const tx=grid.x+grid.width/2,ty=grid.y+grid.height-30;
- await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:tx,y:ty}]});
- for(let i=1;i<=8;i++){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:tx,y:ty-i*30}]});await page.waitForTimeout(20)}
- await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
- assert.ok(await page.locator('.starter-grid').evaluate(e=>e.scrollTop)>50,'Mobile skill list scrolls by touch');
+ assert.equal(await page.locator('.starter-grid .class-card').count(),6);
  await page.locator('.choice-card').filter({hasText:'铁卫'}).click();await page.waitForTimeout(300);
  const layout=await page.evaluate(()=>{
    const s=__game.scene.getScene('garden');s.build.add('orbit');s.sync();
@@ -70,6 +65,16 @@ const assert=require('node:assert/strict');
      rect('#skills').top>=rect('.bar.xp').bottom;
  });
  assert.ok(layout,'Portrait controls, skills and action pad');
+ for (const width of [320,390]) {
+   await page.setViewportSize({width,height:844});
+   await page.evaluate(()=>{const s=__game.scene.getScene('garden');s.xp=s.need;s.upgrade()});
+   const cards=await page.locator('.choice-card').evaluateAll(nodes=>nodes.map(n=>{
+     const r=n.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,overflow:n.scrollWidth>n.clientWidth+1};
+   }));
+   assert.equal(cards.length,3);
+   assert.ok(cards.every((r,i)=>r.y===cards[0].y && !r.overflow && r.x>=0 && r.right<=width && (!i || r.x>=cards[i-1].right)));
+   await page.locator('.choice-card').first().click();
+ }
  const touchStart=await page.evaluate(()=>__game.scene.getScene('garden').player.x);
  await page.mouse.move(260,400);await page.mouse.down();await page.mouse.move(305,400,{steps:5});await page.waitForTimeout(350);await page.mouse.up();
  assert.ok(await page.evaluate(()=>__game.scene.getScene('garden').player.x)>touchStart+20,'Touch-style floating joystick');
@@ -78,6 +83,6 @@ const assert=require('node:assert/strict');
  await page.keyboard.press('Space');await page.screenshot({path:'artifacts/pause-landscape.png'});
  await page.getByRole('button',{name:/继续行动/}).click();
  assert.deepEqual(errors,[],'No page or HTTP errors');
- console.log('PASS: 5 class choices, movement, one-tap tower construction and exit, pause/resume, combat, upgrade, boss HUD, restart cleanup, mobile/landscape; no browser errors');
+ console.log('PASS: 6 class choices, movement, one-tap tower construction and exit, pause/resume, combat, upgrade, boss HUD, restart cleanup, mobile/landscape; no browser errors');
  await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

@@ -5,7 +5,7 @@ const assert=require('node:assert/strict');
  page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:5173/?debug');await page.waitForFunction(()=>__game?.scene.getScene('garden')?.player);
  const results=[];
- for(const id of ['ranger','vanguard','pyromancer','engineer','warden']){
+ for(const id of ['ranger','vanguard','pyromancer','engineer','warden','astronomer']){
   await page.evaluate(()=>__game.scene.getScene('garden').scene.restart());await page.waitForFunction(()=>__game.scene.getScene('garden').mode==='ready');
   const result=await page.evaluate(id=>{
    const s=__game.scene.getScene('garden');s.selectClass(id);s.spawnClock=999;s.invincible=999;

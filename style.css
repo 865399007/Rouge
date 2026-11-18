@@ -804,7 +804,7 @@ kbd {
   color: #6b7150;
 }
 .starter-grid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
 }
 .starter-grid .choice-card {
@@ -1545,3 +1545,31 @@ kbd {
   touch-action: manipulation;
 }
 #tower-upgrade:disabled { background: #e2d8c2; color: #605847; }
+
+.selection-menu .choice-grid { margin-top: 14px; }
+.selection-menu .starter-grid .class-card { min-height: 0; padding: 10px; }
+.selection-menu .class-card .class-portrait { height: 62px; margin-bottom: 5px; }
+.selection-menu .class-portrait > img:first-child { height: 60px; }
+.selection-menu .class-portrait .class-weapon { width: 32px; height: 25px; }
+.selection-menu .class-card .choice-title, .selection-menu .class-card .choice-tag { margin-bottom: 3px; }
+.selection-menu .class-card .choice-detail { line-height: 1.45; white-space: pre-line; }
+@media (orientation: portrait) {
+  .game-menu.selection-menu { width: min(100%, 640px); padding: 12px 8px; }
+  .selection-menu .menu-heading h1 { margin: 0; font-size: 20px; }
+  .selection-menu .menu-description, .selection-menu .menu-footer { margin: 5px 0; font-size: 11px; }
+  .selection-menu .choice-grid:not(.starter-grid) { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .selection-menu .choice-grid:not(.starter-grid) .choice-card {
+    min-width: 0; min-height: 0; padding: 7px 4px; border-width: 2px; border-radius: 7px;
+  }
+  .selection-menu .choice-card .choice-icon:not(.class-portrait) {
+    position: static; width: 30px; height: 30px; border-width: 2px; border-radius: 7px; margin-bottom: 5px;
+  }
+  .selection-menu .choice-icon svg { width: 20px; height: 20px; }
+  .selection-menu .choice-tag { font-size: 10px; margin-bottom: 2px; }
+  .selection-menu .choice-title { font-size: 14px; margin-bottom: 4px; }
+  .selection-menu .choice-detail { font-size: 11px; line-height: 1.4; white-space: pre-line; overflow-wrap: anywhere; color: #61553e; }
+  .selection-menu .starter-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; }
+  .selection-menu .starter-grid .class-card { padding: 7px; }
+  .selection-menu .class-card .class-portrait { height: 41px; }
+  .selection-menu .class-portrait > img:first-child { height: 40px; }
+}

@@ -8,19 +8,20 @@ const assert=require('node:assert/strict');
  const results=await page.evaluate(async()=>{
   const {skills}=await import('./battle-skills.js'),s=__game.scene.getScene('garden'),results=[];
   s.selectClass('ranger');s.job=null;s.spawnClock=99999;s.invincible=99999;
-  for(const skill of skills){
+  s.bossTimes=[];s.nextEliteAt=Infinity;
+  for(const skill of skills) for(const level of [1,2,3,4,5]){
    s.enemies.forEach(e=>e.s.destroy());s.enemies=[];
    s.bullets.forEach(b=>b.s.destroy());s.bullets=[];
    s.effects.forEach(e=>e.sprite.destroy());s.effects=[];s.combat.zones=[];
    for(const [dx,dy] of [[20,0],[80,0],[0,85],[100,15]])
     s.enemies.push({s:s.add.image(s.player.x+dx,s.player.y+dy,'bug').setDepth(4),hp:10000,maxHp:10000,speed:0,r:20,armor:0,damage:1});
-   s.build.active=[{...skill,level:3,remaining:0}];s.mode='play';
+   s.build.active=[{...skill,level,remaining:0}];s.mode='play';
    for(let i=0;i<120;i++)s.step(i*1000/30,1000/30);
-   results.push({id:skill.id,damage:Math.round(s.enemies.reduce((sum,e)=>sum+e.maxHp-e.hp,0)),effects:s.effects.length,zones:s.combat.zones.length});
+   results.push({id:skill.id,level,damage:Math.round(s.enemies.reduce((sum,e)=>sum+e.maxHp-e.hp,0)),effects:s.effects.length,zones:s.combat.zones.length});
   }
   s.mode='pause';return results;
  });
- assert.equal(results.length,10);for(const r of results)assert.ok(r.damage>0,`${r.id} should deal damage`);assert.deepEqual(errors,[]);
- console.log(JSON.stringify(results,null,2));console.log('PASS: All 10 skills deal damage in isolation; no browser errors');
+ assert.equal(results.length,50);for(const r of results)assert.ok(r.damage>0,`${r.id} should deal damage`);assert.deepEqual(errors,[]);
+ console.log(JSON.stringify(results,null,2));console.log('PASS: All 10 skills at all five ranks deal damage in isolation; no browser errors');
  await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

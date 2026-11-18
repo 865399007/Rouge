@@ -99,9 +99,48 @@ export const CLASSES = [
     strengths: "去返穿透 · 护甲减伤",
     weakness: "直线之外的目标难以命中",
   },
+  {
+    id: "astronomer", name: "引星师", weapon: "星盘", icon: "constellation", texture: "star-dial",
+    hp: 95, speed: 208, armor: 2, power: 1, crit: 0.05,
+    cooldown: 2.3, damage: 38, range: 360, color: 0xc9a5f0,
+    description: "星盘标记最多三个敌人，0.8 秒后同时引爆星印。",
+    strengths: "三重星印 · 延时引爆", weakness: "伤害延迟生效",
+  },
 ];
 export function classById(id) {
   return CLASSES.find((c) => c.id === id);
+}
+
+function updateConstellation(scene, job, enemies, dt) {
+  if (!scene.constellation) {
+    if (scene.weaponClock > 0) return;
+    const targets = enemies.filter(e => scene.distance(scene.player, e.s) <= job.range)
+      .sort((a, b) => scene.distance(scene.player, a.s) - scene.distance(scene.player, b.s)).slice(0, 3);
+    if (!targets.length) return;
+    scene.constellation = { targets, remaining: 0.8, art: scene.add.graphics().setDepth(7) };
+    scene.weaponClock = job.cooldown * (1 - scene.build.haste);
+  }
+  const marks = scene.constellation;
+  marks.remaining -= dt;
+  const art = marks.art.clear(), alive = marks.targets.filter(e => e.s.active);
+  const radius = 8 + Math.max(0, marks.remaining) * 15;
+  let previous;
+  for (const enemy of alive) {
+    const {x,y} = enemy.s;
+    if (previous) art.lineStyle(2,job.color,0.7).lineBetween(previous.x,previous.y,x,y);
+    art.lineStyle(2,job.color).strokeCircle(x,y,radius)
+      .fillStyle(0xffe3a0).fillTriangle(x,y-radius-4,x-4,y-radius+2,x+4,y-radius+2);
+    previous = enemy.s;
+  }
+  if (marks.remaining > 0 && alive.length) return;
+  art.destroy();
+  scene.constellation = null;
+  for (const enemy of alive) {
+    if (scene.mode !== "play") break;
+    scene.combat.cancelArea(enemy.s.x, enemy.s.y, 23);
+    scene.effect(scene.add.star(enemy.s.x, enemy.s.y, 4, 5, 23, 0xf4d6ff).setDepth(8), 0.25, 0, 0, 0.6);
+    scene.combat.damage(enemy, scene.build.weaponDamage(job.damage), "holy");
+  }
 }
 
 export function updateClassWeapon(scene, dt) {
@@ -109,6 +148,7 @@ export function updateClassWeapon(scene, dt) {
   if (!job) return;
   scene.weaponClock = Math.max(0, (scene.weaponClock || 0) - dt);
   const enemies = scene.enemies.filter((e) => e.s.active);
+  if (job.id === "astronomer") return updateConstellation(scene, job, enemies, dt);
   const nearest = (origin, range) =>
     enemies
       .filter((e) => scene.distance(origin, e.s) < range + e.r)
@@ -165,8 +205,9 @@ export function updateClassWeapon(scene, dt) {
         .lineBetween(t.x, t.y, target.s.x, target.s.y)
         .lineStyle(2, 0xfff2c8)
         .lineBetween(t.x, t.y, target.s.x, target.s.y);
+      scene.combat.cancelLine(t, target.s, 2);
       scene.effect(beam, 0.12);
-      scene.combat.damage(target, job.damage * scene.build.power, "physical");
+      scene.combat.damage(target, scene.build.weaponDamage(job.damage), "physical");
       t.clock = 0.65 * (1 - scene.build.haste);
       return true;
     });
@@ -179,8 +220,9 @@ export function updateClassWeapon(scene, dt) {
       target.s.y - scene.player.y,
       target.s.x - scene.player.x,
     ),
-    damage = job.damage * scene.build.power;
+    damage = scene.build.weaponDamage(job.damage);
   if (job.id === "vanguard") {
+    scene.combat.cancelArea(scene.player.x,scene.player.y,job.range,angle,1.2);
     const g = scene.add
       .graphics({ x: scene.player.x, y: scene.player.y })
       .setDepth(8);

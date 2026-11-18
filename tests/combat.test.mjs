@@ -14,7 +14,7 @@ function fixture() {
   };
   const s = {
     build: new Build(1),
-    enemies: [target],
+    enemies: [target], hostile: [],
     player: { x: 100, y: 100 },
     hp: 40,
     maxHp: 100,
@@ -115,4 +115,19 @@ test("空间查询包含碰撞圆触及范围、但中心跨过格子边缘的�
   target.r = 38;
   combat.hash.rebuild(s.enemies);
   assert.equal(combat.hash.query(100, 100, 10).length, 1);
+});
+
+test("高速交叉的双方弹道抵消，未相交的敌弹保留", () => {
+  const { s, combat } = fixture();
+  s.add = { star: graphics };
+  s.effect = () => {};
+  const orb = y => ({s:{x:100,y,destroy(){}},vx:-1000,vy:0});
+  s.hostile.push(orb(0), orb(50));
+  assert.ok(combat.intercept({s:{x:0,y:0},vx:1000,vy:0},0.06));
+  assert.equal(s.hostile.length,1);
+  assert.equal(s.hostile[0].s.y,50);
+  combat.cancelArea(0,0,20);
+  assert.equal(s.hostile.length,1);
+  combat.cancelLine({x:0,y:50},{x:100,y:50},3);
+  assert.equal(s.hostile.length,0);
 });

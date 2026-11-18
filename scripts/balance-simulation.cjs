@@ -3,7 +3,7 @@ const {chromium}=require('./playwright-runtime.cjs');
  const browser=await chromium.launch({headless:true,channel:'msedge'}),page=await browser.newPage({viewport:{width:1280,height:800}});page.on('pageerror',e=>console.log('ERROR',e.message));
  await page.goto('http://127.0.0.1:5173/?debug');await page.waitForFunction(()=>__game?.scene.getScene('garden')?.player);
  const report=[];
- for(const id of ['ranger','vanguard','pyromancer','engineer','warden']){
+ for(const id of ['ranger','vanguard','pyromancer','engineer','warden','astronomer']){
   await page.evaluate(()=>__game.scene.getScene('garden').scene.restart());await page.waitForFunction(()=>__game.scene.getScene('garden').mode==='ready');
   const result=await page.evaluate(async ({id,invulnerable})=>{
    const {TOWER_TUNING}=await import('./balance.js');const s=__game.scene.getScene('garden');s.selectClass(id);if(invulnerable)s.invincible=10000;

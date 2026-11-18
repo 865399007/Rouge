@@ -50,6 +50,62 @@ function animateWalker(mount, player, dt) {
   }
 }
 
+function trailStamp(scene, id, x, y, angle, side) {
+  const art = scene.add.graphics({ x, y }).setDepth(2.5).setRotation(angle);
+  switch (id) {
+    case "walker":
+      for (const lane of [-1, 1]) {
+        const heel = lane * side * 5;
+        art.fillStyle(0x253e41, 0.8).fillRoundedRect(heel-5, lane*13-3, 11, 6, 2)
+          .lineStyle(2, 0x74ffdc).lineBetween(heel-2, lane*13, heel+3, lane*13);
+      }
+      break;
+    case "stag":
+      art.lineStyle(2, 0x83d6ed).lineBetween(-12, 0, 8, 0)
+        .lineBetween(-6, 0, -12, -5).lineBetween(-3, 0, -9, 6)
+        .fillStyle(0xe3ffff).fillTriangle(1, 0, 6, -9*side, 9, 0);
+      break;
+    case "drake":
+      art.fillStyle(0xe55736, 0.85).fillTriangle(9, -5, -21, side*6, 6, 6)
+        .fillStyle(0xffc14f).fillTriangle(7, -2, -12, side*3, 6, 3)
+        .fillCircle(-23, -side*5, 2);
+      break;
+    case "lynx": {
+      const bolt = [{x:9,y:0},{x:-1,y:side*7},{x:-4,y:-side*4},{x:-17,y:side*3}];
+      art.lineStyle(5, 0x8454ad, 0.8).strokePoints(bolt)
+        .lineStyle(2, 0xffec81).strokePoints(bolt);
+      break;
+    }
+    case "boar":
+      art.lineStyle(3, 0x735640).lineBetween(5,-4,-2,0).lineBetween(-2,0,-12,-3)
+        .lineBetween(-2,0,-7,6).fillStyle(0xb48d64,0.8)
+        .fillCircle(-8,side*9,5).fillCircle(-15,side*12,3)
+        .fillTriangle(3,side*7,7,side*11,0,side*12);
+      break;
+  }
+  scene.effect(art, id === "lynx" ? 0.32 : 0.56, 0, 0, id === "boar" ? 0.5 : 0);
+}
+
+function updateMountTrail(scene, mount) {
+  const trail = mount.trail, p = scene.player;
+  const dx = p.x - trail.x, dy = p.y - trail.y, distance = Math.hypot(dx, dy);
+  if (!distance) return;
+  const spacing = 19;
+  if (distance < 120) {
+    const angle = Math.atan2(dy, dx);
+    for (let step = spacing - trail.carry; step <= distance; step += spacing) {
+      const fraction = (step - 15) / distance;
+      trailStamp(scene, mount.type.id, trail.x + dx*fraction, trail.y + dy*fraction + 29, angle, trail.side);
+      trail.side *= -1;
+    }
+    trail.carry = (trail.carry + distance) % spacing;
+  } else {
+    trail.carry = 0;
+  }
+  trail.x = p.x;
+  trail.y = p.y;
+}
+
 export function ride(scene, type) {
   scene.mount?.sprite.destroy();
   scene.mount?.label.destroy();
@@ -60,6 +116,7 @@ export function ride(scene, type) {
     fontSize: "12px", color: "#fff2cf", stroke: "#342d26", strokeThickness: 3,
   }).setOrigin(0.5, 0).setDepth(9);
   scene.mount = { type, sprite, label, shield: type.shield || 0, remaining: 60, cooldown: 0 };
+  scene.mount.trail = { x, y, carry: 0, side: 1 };
   if (walker) {
     const art = scene.add.graphics().setDepth(4.8);
     scene.mount.gait = { art, phase: 0, stride: 0, lastX: x, lastY: y };
@@ -82,6 +139,7 @@ export function updateMount(scene, dt) {
     return;
   }
   const p = scene.player;
+  updateMountTrail(scene, mount);
   const input = scene.movementInput();
   if (mount.gait) animateWalker(mount, p, dt);
   else {

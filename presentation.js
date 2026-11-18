@@ -1,4 +1,4 @@
-import { BALANCE } from "./balance.js";
+import { BALANCE, variants } from "./balance.js";
 // Original vector art and presentation layer.
 export const artKeys = [
   "mount-walker-chassis", "mount-walker", "mount-stag", "mount-drake", "mount-lynx", "mount-boar",
@@ -7,6 +7,8 @@ export const artKeys = [
   "hero-pyromancer",
   "hero-engineer",
   "hero-warden",
+  "hero-astronomer",
+  "star-dial",
   "axe",
   "crossbow",
   "fire-staff",
@@ -14,6 +16,7 @@ export const artKeys = [
   "deployer",
   "potato",
   "bug",
+  ...Object.keys(variants),
   "brute",
   "runner",
   "spitter",
@@ -30,6 +33,8 @@ export const artKeys = [
 ];
 
 const paths = {
+  constellation: '<path d="m3 15 8-11 9 13-17-2"/><circle cx="3" cy="15" r="2"/><circle cx="11" cy="4" r="2"/><circle cx="20" cy="17" r="2"/>',
+  weaponMastery: '<path d="m4 20 4-4m-3-3 6 6m-4-6L17 3l4-1-1 5L10 17"/>',
   meteor:
     '<path d="m5 3 8 8M3 8l7 7M10 2l7 7"/><circle cx="16" cy="16" r="6"/>',
   frost: '<path d="M12 2v20M3 7l18 10M3 17 21 7M8 4l4 4 4-4M8 20l4-4 4 4"/>',
@@ -46,6 +51,7 @@ const paths = {
   heal_supply: '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z"/>',
 };
 const buffPaths = {
+  weaponMastery: paths.weaponMastery,
   evasion: '<circle cx="15" cy="6" r="2"/><path d="m13 10-5 4 5 2-4 5m4-11 3 4 5-1M3 8h5m-7 4h4"/>',
   shield: '<path d="m12 2 9 4v6q0 6-9 10-9-4-9-10V6Zm-4 10h8m-4-4v8"/>',
   power: '<path d="M5 19 18 6l1 5M5 19l5-1M4 13l7-7"/>',
@@ -128,11 +134,11 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
   );
   overlay.append(panel);
   const head = el("div", "menu-heading");
-  head.append(
+  if (!cards) head.append(
     el(
       "div",
       "eyebrow",
-      cards ? "BUILD YOUR SURVIVOR / 配装" : "LAST BLOCK / 生存行动",
+      "LAST BLOCK / 生存行动",
     ),
   );
   head.append(el("h1", "", title), el("p", "menu-description", detail));
@@ -164,7 +170,7 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
       ? `choice-grid ${choices.length > 3 ? "starter-grid" : ""}`
       : "menu-actions",
   );
-  choices.forEach((choice, i) => {
+  choices.forEach((choice) => {
     const button = el("button", cards ? "choice-card" : "menu-action");
     button.type = "button";
     if (cards) {
@@ -176,29 +182,14 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
         symbol.classList.add("class-portrait");
         symbol.innerHTML = `<img src="./assets/hero-${choice.job.id}.svg" alt=""><img class="class-weapon" src="./assets/${choice.job.texture}.svg" alt="${choice.job.weapon}">`;
       }
-      button.append(
-        el("span", "card-index", String(i + 1).padStart(2, "0")),
-        symbol,
-      );
+      button.append(symbol);
       button.append(el("span", "choice-tag", choice.levelText || "初始技能"));
     }
     button.append(
       el("strong", "choice-title", choice.cardTitle || choice.title),
     );
     button.append(el("span", "choice-detail", choice.stats || choice.detail));
-    if (cards)
-      button.append(
-        el(
-          "span",
-          "choice-cta",
-          choice.job
-            ? "以此职业出发 ↗"
-            : choice.levelText
-              ? "选择成长 ↗"
-              : "装备出发 ↗",
-        ),
-      );
-    else button.append(el("span", "action-arrow", "→"));
+    if (!cards) button.append(el("span", "action-arrow", "→"));
     button.onclick = () => {
       if (scene.panel?.element === overlay) choice.action();
     };
@@ -210,8 +201,8 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
     "menu-footer",
     cards
       ? choices.length > 3
-        ? "职业武器不占技能槽 · 最多装备 4 种技能 · 技能高阶需要角色等级解锁"
-        : "升级期间战斗暂停 · 选择后继续行动"
+        ? "职业武器独立 · 技能槽 ×4"
+        : "点选一项，继续战斗"
       : "W A S D  移动    /    SPACE  暂停    /    触屏拖动左侧移动",
   );
   panel.append(footer);
@@ -310,7 +301,7 @@ export function combatFeedback(scene, x, y, color, critical, lethal) {
   }
 }
 
-export function drawOrbit(g, x, y, color, angle) {
+export function drawOrbit(g, x, y, color, angle, level = 1) {
   const points = [
     { x, y: y - 12 },
     { x: x + 7, y },
@@ -323,9 +314,13 @@ export function drawOrbit(g, x, y, color, angle) {
     x,
     y,
   );
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 1; i <= level + 1; i++) {
     const tx = x + Math.sin(angle) * i * 7, ty = y - Math.cos(angle) * i * 7;
     g.fillStyle(color, 0.32 / i).fillTriangle(tx, ty-9, tx+5, ty, tx, ty+9);
+  }
+  if (level >= 3) {
+    const span = level * 2;
+    g.fillStyle(0xffeab5).fillTriangle(x-span,y+5,x,y-4,x+span,y+5);
   }
   g.fillStyle(color)
     .fillPoints(points, true)
@@ -334,7 +329,7 @@ export function drawOrbit(g, x, y, color, angle) {
   g.lineStyle(2, 0xfff6d2).lineBetween(x, y - 7, x, y + 3);
 }
 
-export function drawArc(g, from, to, color) {
+export function drawArc(g, from, to, color, level = 1) {
   const dx = to.x - from.x,
     dy = to.y - from.y,
     d = Math.max(1, Math.hypot(dx, dy));
@@ -347,12 +342,13 @@ export function drawArc(g, from, to, color) {
     });
   }
   points.push({ x: to.x, y: to.y });
-  for (const i of [2, 4]) {
-    const node = points[i], sign = i === 2 ? 1 : -1;
+  for (let i = 1; i <= level; i++) {
+    const node = points[i], sign = i % 2 ? 1 : -1;
     g.lineStyle(2, color, 0.9).lineBetween(node.x, node.y,
       node.x + dx * 0.12 - sign * dy / d * 17, node.y + dy * 0.12 + sign * dx / d * 17);
   }
-  g.lineStyle(7, color, 0.4).strokePoints(points, false);
+  if (level === 5) g.lineStyle(2, 0xffdd90).strokeCircle(to.x, to.y, 10);
+  g.lineStyle(5 + level, color, 0.4).strokePoints(points, false);
   g.lineStyle(3, color).strokePoints(points, false);
   g.lineStyle(1, 0xfff5d4).strokePoints(points, false);
 }

@@ -133,6 +133,8 @@ export function renderLoadout(panel, equipped) {
 }
 
 export function castArt(scene, skill, target, radius, color) {
+  const level = skill.level || 1;
+  const spokes = 4 + level * 2;
   const g = scene.add.graphics().setDepth(7);
   const center = ["nova", "drain", "trap", "cone"].includes(skill.type)
     ? scene.player
@@ -141,9 +143,15 @@ export function castArt(scene, skill, target, radius, color) {
   g.lineStyle(3, color, 0.9);
   switch (skill.type) {
     case "area":
-      for (let i = 1; i < 6; i++) {
+      for (let i = 1; i <= level + 1; i++) {
         const offset = (i % 2 ? -1 : 1) * (5 + i * 2);
         g.lineStyle(3, 0xffa453, 0.8).lineBetween(-i*13+offset,-i*22,-i*13+offset-12,-i*22-24);
+      }
+      for (let i = 1; i < level; i++) {
+        const side = i % 2 ? -1 : 1;
+        const x = side * (12 + i * 5), y = -8 * i;
+        g.fillStyle(0xf58a47).fillTriangle(x, y, x-12, y-30, x+5, y-4)
+          .fillStyle(0xffdc80).fillCircle(x,y,3+i);
       }
       g.lineStyle(20, 0x503d30, 0.8).lineBetween(-60, -105, 0, 0);
       g.lineStyle(13, color, 1).lineBetween(-60, -105, 0, 0);
@@ -151,8 +159,8 @@ export function castArt(scene, skill, target, radius, color) {
       g.fillStyle(color, 0.12).fillCircle(0, 0, radius);
       g.lineStyle(5, color).strokeCircle(0, 0, radius * 0.8);
       g.lineStyle(2, 0xffedb1).strokeCircle(0, 0, radius * 0.65);
-      for (let i = 0; i < 8; i++) {
-        const a = (i * Math.PI) / 4;
+      for (let i = 0; i < spokes; i++) {
+        const a = (i * Math.PI * 2) / spokes;
         g.lineStyle(4, color).lineBetween(
           Math.cos(a) * radius * 0.85,
           Math.sin(a) * radius * 0.85,
@@ -168,8 +176,8 @@ export function castArt(scene, skill, target, radius, color) {
         g.lineStyle(2, color, 0.8).beginPath().arc(0,0,radius*0.96,a,a+0.7).strokePath();
       }
       g.lineStyle(3, 0xe9fbf4, 0.9).strokeCircle(0, 0, radius * 0.8);
-      for (let i = 0; i < 8; i++) {
-        const a = (i * Math.PI) / 4;
+      for (let i = 0; i < spokes; i++) {
+        const a = (i * Math.PI * 2) / spokes;
         const x = Math.cos(a) * radius * 0.8,
           y = Math.sin(a) * radius * 0.8;
         g.lineStyle(3, color).lineBetween(
@@ -184,6 +192,10 @@ export function castArt(scene, skill, target, radius, color) {
           { x: x - Math.cos(a) * 9, y: y - Math.sin(a) * 9 },
           { x: x - Math.sin(a) * 7, y: y + Math.cos(a) * 7 },
         ];
+        if (level >= 3) {
+          g.lineStyle(2, 0xcaf9ff).lineBetween(x,y,x-12*Math.cos(a+0.6),y-12*Math.sin(a+0.6))
+            .lineBetween(x,y,x-12*Math.cos(a-0.6),y-12*Math.sin(a-0.6));
+        }
         g.fillStyle(0xeaf9ef)
           .fillPoints(points, true)
           .lineStyle(2, 0x628d98)
@@ -192,9 +204,9 @@ export function castArt(scene, skill, target, radius, color) {
       break;
     case "cone":
       g.rotation = Math.atan2(target.s.y - center.y, target.s.x - center.x);
-      for (let i=0; i<3; i++) {
-        g.lineStyle(4-i, color, 0.65).beginPath()
-          .arc(0,0,radius*(0.64+i*0.1),-1.25+i*0.18,0.55+i*0.28).strokePath();
+      for (let i=0; i<level; i++) {
+        g.lineStyle(2+i*0.65, color, 0.65).beginPath()
+          .arc(0,0,radius*(0.54+i*0.09),-1.25+i*0.18,0.55+i*0.28).strokePath();
       }
       g.lineStyle(14, color, 0.65)
         .beginPath()
@@ -206,16 +218,16 @@ export function castArt(scene, skill, target, radius, color) {
         .strokePath();
       break;
     case "pull":
-      for (let i = 1; i <= 3; i++)
+      for (let i = 1; i <= level+1; i++)
         g.beginPath()
-          .arc(0, 0, (radius * i) / 3, i, i + 4.5)
+          .arc(0, 0, (radius * i) / (level+1), i, i + 4.5)
           .strokePath();
       break;
     case "drain":
       g.strokeCircle(0, 0, radius);
       g.lineStyle(2, 0xe0bcd8, 0.5).strokeCircle(0, 0, radius - 8);
-      for (let i = 0; i < 6; i++) {
-        const a = (i * Math.PI) / 3,
+      for (let i = 0; i < spokes; i++) {
+        const a = i * 2 * Math.PI / spokes,
           x = Math.cos(a) * radius,
           y = Math.sin(a) * radius;
         g.lineStyle(3, 0xe0bcd8)
@@ -228,9 +240,9 @@ export function castArt(scene, skill, target, radius, color) {
         .fillCircle(0, 0, 18)
         .lineStyle(3, color)
         .strokeCircle(0, 0, 18);
-      for (let i=0; i<4; i++) {
-        const a = Math.PI*i/2;
-        g.lineStyle(3,color).beginPath().arc(0,0,26,a,a+0.8).strokePath();
+      for (let i=0; i<level+2; i++) {
+        const a = 2*Math.PI*i/(level+2);
+        g.lineStyle(3,color).beginPath().arc(0,0,26,a,a+3/(level+2)).strokePath();
       }
       g.fillStyle(color).fillTriangle(0, -10, 10, 8, -10, 8);
       g.lineStyle(2, 0x554d3d).lineBetween(0, -5, 0, 2);
@@ -239,5 +251,5 @@ export function castArt(scene, skill, target, radius, color) {
       g.destroy();
       return;
   }
-  scene.effect(g, 0.35, 0, 0, 0.15);
+  scene.effect(g, 0.26 + level*0.035, 0, 0, 0.12 + level*0.02);
 }
