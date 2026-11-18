@@ -1,3 +1,26 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>末日小队 · 街区守夜</title>  <script type="module" crossorigin src="./index-B_fofrzP.js"></script>
-  <link rel="stylesheet" crossorigin href="./index-BSbwu-Qg.css">
-</head><body><header><a class="brand" href="./">◉ 末日小队 <small>LAST BLOCK</small></a><span class="edition">一个幸存者的黎明计划 <b>试玩版 01</b></span></header><main><section class="intro"><div><span class="eyebrow">SURVIVE THE OUTBREAK</span><h1>长夜未尽，<em>活到天亮。</em></h1><p>带上装备，突破尸潮，在废弃街区撑到救援抵达。</p></div><div class="stamp">SOS<br><small>等待救援</small></div></section><section class="layout"><div class="game-frame"><div class="game-top"><span><i></i> 街区守夜</span><span id="wave">生存 0 / 10 分钟</span><div class="sound-controls"><button id="sound" aria-label="切换静音" aria-pressed="false">声音：开</button><label for="volume">音量</label><input id="volume" type="range" min="0" max="100" value="35" aria-label="游戏音量"></div><button id="pause">Ⅱ 暂停</button></div><div id="game"></div><div class="game-bottom"><span><kbd>W A S D</kbd> / <kbd>↑ ↓ ← →</kbd> 移动</span><span>自动瞄准 · 靠近拾取 <kbd>空格</kbd> 暂停</span></div></div><aside><div class="card profile"><span class="eyebrow">SURVIVOR FILE</span><h2>今天，也要活着。</h2><div class="potato"><svg viewBox="0 0 60 68" aria-label="幸存者阿零" role="img"><ellipse cx="30" cy="62" rx="24" ry="4" fill="#bdc9bf"/><rect x="12" y="48" width="14" height="14" rx="4" fill="#35454b"/><rect x="34" y="48" width="14" height="14" rx="4" fill="#35454b"/><rect x="10" y="29" width="40" height="27" rx="9" fill="#688681" stroke="#303c3c" stroke-width="2"/><rect x="13" y="10" width="34" height="28" rx="11" fill="#e7bd97" stroke="#303c3c" stroke-width="2"/><rect x="10" y="4" width="40" height="16" rx="7" fill="#424e59"/><path d="M12 17h37" stroke="#d99754" stroke-width="5"/><g fill="#283237"><circle cx="23" cy="26" r="3"/><circle cx="37" cy="26" r="3"/></g><path d="M27 33h6" stroke="#69594b" stroke-width="2"/><path d="M25 44h10m-5-5v10" stroke="#d8c5a4" stroke-width="4"/></svg><span>Lv. <b id="level">1</b></span></div><h3>阿零 <small>街区幸存者</small></h3><div class="health-label"><span>生命值</span><b id="health">100 / 100</b></div><div class="bar"><i id="hp"></i></div><div class="health-label"><span>战斗经验</span><b id="xp-label">0 / 8</b></div><div class="bar xp"><i id="xp"></i></div><div class="equipment"><span class="eyebrow">主动 / 被动 / 进化</span><h4 id="loadout">主动 0/4</h4><p id="skills"></p><p id="traits">尚无特性 · 升级时获得</p></div><div class="stats"><div>⚔ 攻击力<b id="damage">18</b></div><div>➶ 移动速度<b id="speed">210</b></div><div>✦ 击退丧尸<b id="kills">0</b></div></div></div><div class="card notes"><span class="eyebrow">SURVIVAL NOTES</span><h3>避难所生存手册</h3><p>保持移动，别被尸群包围！收集蓝色补给，升级装备与生存技能。</p><span class="scribble">撑过今晚，等到救援。 ↗</span></div><button id="restart">↻ 重新开始行动</button></aside></section><footer><span>一座孤城 · 一群丧尸 · 最后的生还希望</span><span>HOLD THE BLOCK UNTIL DAWN ✳</span></footer></main></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>末日小队 · 街区守夜</title>  <script type="module" crossorigin src="./index-CFy7MOzH.js"></script>
+  <link rel="stylesheet" crossorigin href="./index-BAhPIkx_.css">
+</head>
+<body>
+<main class="game-frame" aria-label="末日小队游戏">
+  <div id="game">
+    <div class="hud" aria-label="战斗状态">
+      <section class="vitals hud-panel">
+        <div class="health-label"><span>生命值 <strong>Lv.<b id="level">1</b></strong></span><b id="health">100 / 100</b></div>
+        <div class="bar"><i id="hp"></i></div>
+        <div class="health-label"><span>战斗经验</span><b id="xp-label">0 / 18</b></div>
+        <div class="bar xp"><i id="xp"></i></div>
+      </section>
+      <span id="wave" class="wave">生存 0 / 10 分钟</span>
+      <div class="game-top">
+        <details class="settings"><summary aria-label="游戏设置">⚙</summary><div class="settings-panel hud-panel"><button id="sound" aria-label="切换静音" aria-pressed="false">声音：开</button><label for="volume">音量</label><input id="volume" type="range" min="0" max="100" value="35" aria-label="游戏音量"><button id="restart">↻ 重新开始</button></div></details>
+        <button id="pause">Ⅱ 暂停</button>
+      </div>
+      <section class="equipment hud-panel"><h4 id="loadout">主动 0/4 · 核心 0</h4><p id="skills">选择首个主动技能</p><p id="traits">被动 0/4</p></section>
+      <section class="stats hud-panel"><span>⚔ 攻击 <b id="damage">18</b></span><span>➶ 移速 <b id="speed">210</b></span><span>✦ 击败 <b id="kills">0</b></span></section>
+    </div>
+  </div>
+</main>
+</body></html>
