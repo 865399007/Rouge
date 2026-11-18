@@ -26,9 +26,9 @@ import {
   drawStatusEffects,
   drawOrbit,
   drawArc,
-} from "./presentation.js";
+} from "./presentation.js?v=pickup-art-2";
 import Lt from "./vendor/phaser.js";
-import { Defenses, advancePickupFlight } from "./defenses.js";
+import { Defenses, advancePickupFlight } from "./defenses.js?v=pickup-art-2";
 import { segmentCircleEntry } from "./geometry.js";
 import { updateMount } from "./mounts.js";
 import { Roll } from "./roll.js";

@@ -19,7 +19,7 @@ const revision = hash.digest('hex').slice(0, 12);
 for (const file of ['index.html', ...modules]) {
   const dest = path.join(output, file);
   const source = await readFile(dest, 'utf8');
-  const versioned = source.replace(/(["'])(\.\/[\w-]+\.js)\1/g,
+  const versioned = source.replace(/(["'])(\.\/[\w-]+\.js)(?:\?v=[\w-]+)?\1/g,
     (_, quote, name) => quote + name + '?v=' + revision + quote);
   await writeFile(dest, versioned);
 }
