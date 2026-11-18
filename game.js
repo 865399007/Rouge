@@ -626,6 +626,10 @@ class ge extends Lt.Scene {
         .setDepth(8)),
       (yt("pause").onclick = () => this.pauseGame()),
       (yt("restart").onclick = () => this.scene.restart()),
+      (yt("return-lobby").onclick = () => {
+        wt();
+        this.scene.restart();
+      }),
       this.timerText.setVisible(false),
       this.hint.setVisible(false),
       this.sync(),

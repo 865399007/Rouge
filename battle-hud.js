@@ -17,12 +17,13 @@ export function drawBattleHud({s,w,h,ids,screen,capRect,toggleNode,padNode,setti
     let slider=null;
     if(settingsOpen){
       const mx=px-204,my=gy+40;
-      box(mx,my,222,185,paper,12,3,4);
+      box(mx,my,222,231,paper,12,3,4);
       const row=(id,caption,offset)=>{box(mx+16,my+offset,190,36,paper,7,3,3);type(mx+111,my+offset+8,caption,15,180,true,true);hit(ids[id],mx+16,my+offset,190,36);};
       row('sound',ids.sound.textContent||'声音：开',18);type(mx+17,my+68,'音量',15,120);
       slider={x:mx+20,y:my+107,w:182};box(slider.x,slider.y-3,182,6,0xdad6c8,3,1);
       const fill=182*volume/100;add(s.add.rectangle(slider.x+fill/2,slider.y,fill,6,0xa66b45));add(s.add.circle(slider.x+fill,slider.y,8,0xa66b45));
       row('restart','↻ 重新开始',132);
+      row('return-lobby','返回大厅',178);
     }
     const rx=Math.min(w*.91,w-60),ry=Math.min(h*.865,h-60),roll=ids.roll;
     const ring=add(s.add.graphics());
