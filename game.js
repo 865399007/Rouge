@@ -874,7 +874,7 @@ class ge extends Lt.Scene {
           false,
         );
       }
-      this.hitStop(200);
+      this.hitStop(100);
       const angle = Math.atan2(enemy.s.y-this.player.y, enemy.s.x-this.player.x);
       enemy.knockback = {x:Math.cos(angle), y:Math.sin(angle), remaining:enemy.boss ? 4 : 12};
       enemy.hitArt = (enemy.hitArt || []).filter(sprite => sprite.active);
