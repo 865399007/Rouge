@@ -1589,3 +1589,5 @@ kbd {
 .lobby-grid img { float:left; width:36px; height:36px; margin-right:7px; }
 .lobby-menu button:disabled { color:#645e52; background:#e0d7c4; cursor:default; }
 .lobby-result { color:#355c36; font-weight:bold; }
+
+.stage-grid button:disabled { filter:grayscale(1); background:#d8d6d0; color:#5e5d58; border-color:#8c8981; }

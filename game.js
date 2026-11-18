@@ -1,4 +1,4 @@
-import { stages, stageWaves, loadLobby, saveLobby, renderLobby, rewardVictory } from "./lobby.js";
+import { stages, stageWaves, loadLobby, saveLobby, renderLobby, rewardVictory } from "./lobby.js?v=stage-lock-1";
 import { ImpactAudio } from "./impact-audio.js";
 import { encounterAngle, updateSupply, updateBossRing } from "./encounters.js";
 import {
@@ -25,9 +25,9 @@ import {
   drawStatusEffects,
   drawOrbit,
   drawArc,
-} from "./presentation.js?v=lobby-1";
+} from "./presentation.js?v=stage-lock-1";
 import Lt from "./vendor/phaser.js";
-import { Defenses, advancePickupFlight } from "./defenses.js?v=lobby-1";
+import { Defenses, advancePickupFlight } from "./defenses.js?v=stage-lock-1";
 import { segmentCircleEntry } from "./geometry.js";
 import { updateMount } from "./mounts.js";
 import { Roll } from "./roll.js";

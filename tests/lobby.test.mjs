@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { stages, stageWaves, rewardVictory, drawShards, upgradeGear } from "../lobby.js";
+import { lastUnlockedStage, stages, stageWaves, rewardVictory, drawShards, upgradeGear } from "../lobby.js";
 import { Build } from "../progression.js";
 import { skillStats } from "../balance.js";
 
@@ -44,4 +44,14 @@ test("碎片逐阶扣除，满级后无法再升级", () => {
   assert.equal(record.rank,5);
   assert.equal(upgradeGear(p,"mount","walker"),false);
   assert.equal(drawShards(p,"mount"),"");
+});
+
+test("大厅按连续通关记录解锁，跳关旧档不能提前开放后续关卡", () => {
+  const wins = {2:3};
+  assert.equal(lastUnlockedStage(wins),0);
+  wins[0]=1;
+  assert.equal(lastUnlockedStage(wins),1);
+  wins[1]=1;
+  assert.equal(lastUnlockedStage(wins),3);
+  assert.equal(lastUnlockedStage(Array(10).fill(1)),9);
 });

@@ -34,9 +34,18 @@ const equipment = {
   weapon: CLASSES.map(j=>({id:j.id,name:j.weapon,image:j.texture})),
   mount: mounts.map(m=>({id:m.id,name:m.name,image:"mount-"+m.id})),
 };
+export function lastUnlockedStage(wins) {
+  const firstUncleared = stages.findIndex((_, i) => !(wins[i] > 0));
+  return firstUncleared < 0 ? stages.length - 1 : firstUncleared;
+}
 export function loadLobby() {
   const fresh = {level:1,xp:0,points:0,tickets:3,stats:{},skills:{},gear:{},wins:{},stage:0};
-  try {return {...fresh,...JSON.parse(localStorage.getItem(key))};} catch {return fresh;}
+  try {
+    const profile = {...fresh,...JSON.parse(localStorage.getItem(key))};
+    const limit = lastUnlockedStage(profile.wins);
+    if (!Number.isInteger(profile.stage) || profile.stage < 0 || profile.stage > limit) profile.stage = limit;
+    return profile;
+  } catch {return fresh;}
 }
 export function saveLobby(profile) { localStorage.setItem(key,JSON.stringify(profile)); }
 const nextXP = level => 80 + level*20;
@@ -104,9 +113,15 @@ export function renderLobby(scene,tab="关卡",message="") {
   };
   if(tab==="关卡") {
     panel.append(node("p","每关十波 · 约五分钟 · 清场后整备"));
-    stages.forEach(([name,theme,enemy],i)=>card(`${i+1}. ${name}`,theme+(p.wins[i]?` · 通关 ×${p.wins[i]}`:""),()=>{
-      p.stage=i;saveLobby(p);scene.stageName=name;scene.waves=stageWaves(i);scene.chooseClass();
-    },false,enemy));
+    const limit = lastUnlockedStage(p.wins);
+    grid.classList.add("stage-grid");
+    stages.forEach(([name,theme,enemy],i)=>{
+      const locked = i > limit;
+      const detail = locked ? `通关第 ${i} 关后解锁` : theme + (p.wins[i] ? ` · 通关 ×${p.wins[i]}` : "");
+      card(`${i+1}. ${name}`,detail,()=>{
+        p.stage=i;saveLobby(p);scene.stageName=name;scene.waves=stageWaves(i);scene.chooseClass();
+      },locked,enemy);
+    });
   } else if(tab==="角色属性") {
     panel.append(node("p","每升一级大厅等级获得 2 点，可用于全职业属性或技能专精。"));
     for(const [id,[name,detail]] of Object.entries(attributes))
