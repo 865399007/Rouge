@@ -283,10 +283,10 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
     overlay.classList.add("upgrade-overlay");
     panel.replaceChildren(list);
   }
-  if (scene.mode === "pause") {
+  if (scene.mode === "pause" || scene.mode === "end") {
     overlay.classList.add("pause-overlay");
     const resume = list.querySelector("button");
-    resume.textContent = "继续游戏";
+    resume.textContent = scene.mode === "pause" ? "继续游戏" : choices[0].title;
     panel.replaceChildren(resume);
   }
   document.getElementById("game").append(overlay);
