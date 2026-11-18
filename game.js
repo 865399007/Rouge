@@ -23,6 +23,7 @@ import {
 import Lt from "./vendor/phaser.js";
 import { Defenses } from "./defenses.js";
 import { segmentCircleEntry } from "./geometry.js";
+import { updateMount } from "./mounts.js";
 import { Roll } from "./roll.js";
 import { skills as Et, renderLoadout, castArt } from "./battle-skills.js";
 (function () {
@@ -84,6 +85,8 @@ St.hidden = true;
 Zt.addEventListener(
   "pointerdown",
   (event) => {
+    if (event.button === 0 && event.target.tagName === "CANVAS" &&
+        Ct.scene.getScenes(true)[0]?.defenses?.tapTower(event)) return;
     const bounds = Zt.getBoundingClientRect();
     if (
       !Tt.enabled ||
@@ -524,7 +527,6 @@ class ge extends Lt.Scene {
     });
     document.querySelector(".settings").removeAttribute("open");
     document.getElementById("timer").textContent = "00:00";
-    document.getElementById("boss-hud").hidden = true;
     document.getElementById("boss-warning").hidden = true;
     document.getElementById("game").classList.remove("low-health");
     (pt.setActive(!1),
@@ -543,6 +545,7 @@ class ge extends Lt.Scene {
       (this.build = new fe()),
       (this.combat = new ce(this, (name) => pt.play(name))),
       (this.runTime = 0),
+      (this.mount = null),
       (this.accumulator = 0),
       (this.bossTimes = [...BALANCE.bosses]),
       (this.nodes = new Set()),
@@ -743,8 +746,6 @@ class ge extends Lt.Scene {
     this.player.setTexture(`hero-${id}`);
     this.gun.setTexture(job.texture);
     document.getElementById("job-name").textContent = job.name;
-    document.querySelector(".survivor-avatar img").src =
-      `./assets/hero-${id}.svg`;
     this.defenses.stock = job.materials ?? BALANCE.initialMaterials;
     this.defenses.refresh();
     this.mode = "play";
@@ -1120,11 +1121,18 @@ class ge extends Lt.Scene {
   upgrade() {
     if (this.mode !== "play" || this.xp < this.need) return;
     pt.play("upgrade");
+    let choices;
+    do {
+      this.level++;
+      this.xp -= this.need;
+      this.need = Ht(this.level);
+      choices = this.build.options(this.level);
+    } while (!choices.length && this.xp >= this.need);
+    if (!choices.length) {
+      this.sync();
+      return;
+    }
     this.mode = "upgrade";
-    this.level++;
-    this.xp -= this.need;
-    this.need = Ht(this.level);
-    const choices = this.build.options(this.level);
     this.showUpgradeCards(
       `Lv.${this.level} · 选择本次成长`,
       `技能 ${this.build.active.length}/4 · 伤害 +${Math.round((this.build.power - 1) * 100)}% · 护甲 ${this.build.armor} · 每次只选一项`,
@@ -1232,8 +1240,6 @@ class ge extends Lt.Scene {
           .toString()
           .padStart(2, "0")}`,
       ));
-    const Q =
-      this.enemies.find((t) => t.final) || this.enemies.find((t) => t.boss);
     updatePresentation(
       this,
       this.keys.W.isDown ||
@@ -1246,11 +1252,6 @@ class ge extends Lt.Scene {
         this.keys.RIGHT.isDown ||
         Tt.x ||
         Tt.y,
-    );
-    this.hint.setText(
-      Q
-        ? `${Q.final ? "最终Boss" : "街区Boss"} · HP ${Math.max(0, Math.ceil(Q.hp))} / ${Q.maxHp}`
-        : "守卫街区 · 10分钟生存",
     );
     for (const t of this.bossTimes)
       this.runTime >= t &&
@@ -1322,15 +1323,16 @@ class ge extends Lt.Scene {
     this.enemyTelegraphs.clear();
     for (let t of this.enemies) {
       this.defenses.confine(t.s, t.r);
-      if (t.elite) {
+      if (t.elite || t.boss) {
+        const color = t.boss ? 0xe17055 : 0xf4c875;
         const x = t.s.x,
-          y = t.s.y - t.r - 10;
+          y = t.s.y - (t.boss ? t.s.displayHeight / 2 : t.r) - 10;
         this.enemyTelegraphs
-          .lineStyle(3, 0xf4c875, 0.95)
+          .lineStyle(3, color, 0.95)
           .strokeCircle(t.s.x, t.s.y, t.r + 4)
           .fillStyle(0x302b25)
           .fillRect(x - 26, y, 52, 7)
-          .fillStyle(0xf4c875)
+          .fillStyle(color)
           .fillRect(x - 24, y + 2, (48 * t.hp) / t.maxHp, 3)
           .fillTriangle(x - 7, y - 5, x + 7, y - 5, x, y - 16);
       }
@@ -1347,10 +1349,7 @@ class ge extends Lt.Scene {
         t.frozenUntil = 0;
       }
 
-      const towerTarget = this.defenses.targetFor(t);
-      if (towerTarget !== t.towerTarget) t.towerWindup = null;
-      t.towerTarget = towerTarget;
-      const attackTarget = towerTarget || this.player;
+      const attackTarget = this.player;
       if ((t.ranged || t.boss) && t.shot < 0.55) {
         const a = Math.atan2(attackTarget.y - t.s.y, attackTarget.x - t.s.x);
         this.enemyTelegraphs
@@ -1390,7 +1389,6 @@ class ge extends Lt.Scene {
           damage: t.damage ?? 10,
         });
       }
-      this.defenses.attackTower(t, K);
       if (
         this.distance(this.player, t.s) < t.r + 18 &&
         this.invincible <= 0 &&
@@ -1463,15 +1461,11 @@ class ge extends Lt.Scene {
       l.s.x += l.vx * K;
       l.s.y += l.vy * K;
       l.life -= K;
-      const towerHit = this.defenses.projectileHit(from, l.s);
       const playerHit =
         this.invincible <= 0
           ? segmentCircleEntry(from, l.s, this.player, 22)
           : null;
-      if (towerHit && (playerHit === null || towerHit.time <= playerHit)) {
-        this.defenses.damage(towerHit.tower, l.damage ?? 10);
-        l.life = 0;
-      } else if (playerHit !== null) {
+      if (playerHit !== null) {
         this.combat.receive(l.damage ?? 10);
         this.invincible = BALANCE.player.invulnerability;
         l.life = 0;
@@ -1487,6 +1481,7 @@ class ge extends Lt.Scene {
       this.mode === "play" &&
       (this.combat.update(K),
       this.mode === "play" && updateClassWeapon(this, K),
+      updateMount(this, K),
       this.defenses.update(K),
       this.mode === "play")
     )

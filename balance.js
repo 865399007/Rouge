@@ -8,8 +8,6 @@ export const BALANCE = {
   enemyCap: 240,
   initialMaterials: 3,
   elites: { first: 25, interval: 30 },
-  siege: { aggroRange: 240, windup: 0.4, cooldown: 1.1 },
-  fortification: { perMinute: 0.07, maxMinutes: 10 },
   roll: { cooldown: 5, duration: 0.3, distance: 150 },
   skillLevelGates: [1, 3, 6, 10, 15],
   damageScales: [1, 1.22, 1.48, 1.78, 2.12],
@@ -18,16 +16,16 @@ export const BALANCE = {
 };
 
 export const SKILL_TUNING = {
-  meteor: { base: 68, cd: 4.5, radius: 78, radiusStep: 6 },
-  frost: { base: 24, cd: 4.2, radius: 100, radiusStep: 8, freeze: 0.85 },
-  venom: { base: 17, cd: 1.15, radius: 480, radiusStep: 0 },
-  arc: { base: 23, cd: 2.6, radius: 440, radiusStep: 0, decay: 0.78 },
-  slash: { base: 38, cd: 1.5, radius: 115, radiusStep: 5 },
-  vortex: { base: 10, cd: 6, radius: 85, radiusStep: 6, duration: 3 },
-  siphon: { base: 8, cd: 7, radius: 90, radiusStep: 5, duration: 3, heal: 0.6 },
-  orbit: { base: 14, cd: 0.5, radius: 78, radiusStep: 4 },
-  rail: { base: 65, cd: 3.8, radius: 580, radiusStep: 0 },
-  mine: { base: 82, cd: 4.2, radius: 82, radiusStep: 5, duration: 8 },
+  meteor: { base: 88, cd: 4.5, radius: 78, radiusStep: 6 },
+  frost: { base: 31, cd: 4.2, radius: 100, radiusStep: 8, freeze: 0.85 },
+  venom: { base: 22, cd: 1.15, radius: 480, radiusStep: 0 },
+  arc: { base: 30, cd: 2.6, radius: 440, radiusStep: 0, decay: 0.78 },
+  slash: { base: 49, cd: 1.5, radius: 115, radiusStep: 5 },
+  vortex: { base: 13, cd: 6, radius: 85, radiusStep: 6, duration: 3 },
+  siphon: { base: 10, cd: 7, radius: 90, radiusStep: 5, duration: 3, heal: 0.6 },
+  orbit: { base: 18, cd: 0.5, radius: 78, radiusStep: 4 },
+  rail: { base: 84, cd: 3.8, radius: 580, radiusStep: 0 },
+  mine: { base: 107, cd: 4.2, radius: 82, radiusStep: 5, duration: 8 },
 };
 
 export const TOWER_TUNING = [
@@ -35,7 +33,6 @@ export const TOWER_TUNING = [
     name: "速射塔",
     icon: "➶",
     cost: 3,
-    hp: 180,
     color: 0xf4c875,
     range: 300,
     cooldown: 0.6,
@@ -46,7 +43,6 @@ export const TOWER_TUNING = [
     name: "冰晶塔",
     icon: "❄",
     cost: 5,
-    hp: 240,
     color: 0x94e4ff,
     range: 260,
     cooldown: 1.8,
@@ -57,7 +53,6 @@ export const TOWER_TUNING = [
     name: "爆裂塔",
     icon: "✹",
     cost: 7,
-    hp: 320,
     color: 0xff9468,
     range: 280,
     cooldown: 2.5,
@@ -67,14 +62,7 @@ export const TOWER_TUNING = [
 ];
 
 export function xpToNext(level) {
-  return Math.ceil(30 + 10 * level + 2 * level ** 1.7);
-}
-export function towerMaxHp(type, seconds = 0) {
-  const minute = Math.max(
-    0,
-    Math.min(BALANCE.fortification.maxMinutes, Math.floor(seconds / 60)),
-  );
-  return Math.round(type.hp * (1 + minute * BALANCE.fortification.perMinute));
+  return Math.ceil(15 + 7 * level + 1.35 * level ** 1.7);
 }
 export function spawnInterval(seconds, bossAlive = false) {
   return Math.max(0.22, 0.78 / (1 + seconds / 140)) * (bossAlive ? 1.35 : 1);

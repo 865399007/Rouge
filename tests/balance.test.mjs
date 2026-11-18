@@ -13,9 +13,9 @@ import { skills } from "../battle-skills.js";
 import { CLASSES } from "../classes.js";
 import { DamageNumbers } from "../damage-numbers.js";
 
-test("前期至少 14 只普通敌人才升一级，经验曲线持续增长", () => {
-  assert.equal(xpToNext(1), 42);
-  assert.equal(Math.ceil(xpToNext(1) / enemyStats("bug", 0).xp), 14);
+test("前期8 只普通敌人才升一级，经验曲线持续增长", () => {
+  assert.equal(xpToNext(1), 24);
+  assert.equal(Math.ceil(xpToNext(1) / enemyStats("bug", 0).xp), 8);
   for (let i = 2; i < 60; i++) assert.ok(xpToNext(i) > xpToNext(i - 1));
 });
 test("首领时间固定为45秒起步，常规间隔60秒，最终首领9分钟", () => {
@@ -62,8 +62,22 @@ test("四技能满槽不再提供新技能，所有属性有上限", () => {
   const b = new Build(123);
   for (const k of skills.slice(0, 4)) b.add(k.id);
   assert.equal(b.add(skills[4].id), false);
-  for (const c of b.options(15))
-    if (c.kind === "skill") assert.ok(c.previous > 0);
+  const counts = new Set(), kinds = new Set();
+  for (let i = 0; i < 100; i++) {
+    const cards = b.options(15);
+    assert.equal(new Set(cards.map(c => c.id)).size, 3);
+    const upgrades = cards.filter(c => c.kind === "skill");
+    assert.ok(upgrades.length >= 1 && upgrades.every(c => b.active.some(s => s.id === c.id)));
+    counts.add(upgrades.length);
+    cards.forEach(c => kinds.add(c.kind));
+  }
+  assert.equal(counts.size, 3);
+  assert.equal(kinds.size, 3);
+  assert.ok(b.options(1).every(c => c.kind !== "skill"));
+  for (const skill of b.active.slice(1)) skill.level = 5;
+  assert.deepEqual(b.options(15).filter(c => c.kind === "skill").map(c => c.id), [b.active[0].id]);
+  b.active[0].level = 5;
+  assert.ok(b.options(15).every(c => c.kind !== "skill"));
   const scene = { level: 20, hp: 80, maxHp: 100, speed: 210 };
   for (const a of ATTRIBUTES) {
     for (let i = 0; i < a.max; i++)

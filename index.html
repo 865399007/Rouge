@@ -23,10 +23,7 @@
     <main class="game-frame" aria-label="末日小队游戏">
       <div id="game" tabindex="-1">
         <div class="hud" aria-label="战斗状态">
-          <section class="vitals hud-panel">
-            <div class="survivor-avatar">
-              <img src="./assets/potato.svg" alt="守夜人" />
-            </div>
+          <section class="vitals" aria-label="角色状态">
             <div class="vitals-bars">
               <div class="health-label">
                 <span
@@ -36,7 +33,7 @@
               </div>
               <div class="bar"><i id="hp"></i></div>
               <div class="health-label xp-label">
-                <span>进化经验</span><b id="xp-label">0 / 42</b>
+                <span>进化经验</span><b id="xp-label">0 / 24</b>
               </div>
               <div class="bar xp"><i id="xp"></i></div>
             </div>
@@ -66,10 +63,6 @@
             <button id="pause">Ⅱ 暂停</button>
           </div>
           <div id="boss-warning" aria-live="polite" hidden></div>
-          <div id="boss-hud" hidden>
-            <strong>街区暴君</strong><span></span>
-            <div class="bar"><i></i></div>
-          </div>
           <aside id="tower-tools" aria-label="拖动建造防御塔"></aside>
           <div class="placement-notice" role="status">
             战斗已暂停 · 松手建造，移出轮盘取消
@@ -80,15 +73,22 @@
             type="button"
             aria-label="翻滚，冷却5秒，期间无敌，快捷键Shift"
           >
-            <span aria-hidden="true">↻</span><strong>翻滚</strong
-            ><small>SHIFT · 就绪</small>
+            <svg class="dodge-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+              <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 18h10M3 24h8M7 30h5" stroke-width="2.5" opacity=".65"/>
+                <path d="M13 33c5 8 18 10 26 1" stroke-width="2.5"/>
+                <path d="m34 33 7-3-1 7" stroke-width="2.5"/>
+                <path d="m29 17-8 5 6 5-8 5M22 22l-7 6M29 18l1 8 6 1" stroke-width="5"/>
+              </g>
+              <circle cx="34" cy="13" r="4.5" fill="currentColor"/>
+            </svg>
           </button>
           <section
             id="skills"
             class="equipment hud-panel"
             aria-label="已装备技能"
           ></section>
-          <section class="stats hud-panel">
+          <section class="stats">
             <span>增伤 <b id="damage">0%</b></span
             ><span>移速 <b id="speed">210</b></span
             ><span>击败 <b id="kills">0</b></span>

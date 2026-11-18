@@ -1,9 +1,9 @@
-import { BALANCE, TOWER_TUNING, materialDrop, towerMaxHp } from "./balance.js";
+import { mounts, ride } from "./mounts.js";
+import { BALANCE, TOWER_TUNING, materialDrop } from "./balance.js";
 import {
   TOWER_RADIUS,
   circlesOverlap,
   moveCircle,
-  segmentCircleEntry,
 } from "./geometry.js";
 const types = TOWER_TUNING;
 const halfTower = TOWER_RADIUS;
@@ -33,7 +33,6 @@ export class Defenses {
     this.stock = BALANCE.initialMaterials;
     this.towers = [];
     this.drops = [];
-    this.reinforcementMinute = 0;
     this.preview = scene.add.graphics().setDepth(12);
     this.tools = document.getElementById("tower-tools");
     this.tools.replaceChildren();
@@ -47,7 +46,7 @@ export class Defenses {
     this.tools.append(this.wheel);
     this.buttons = types.map((type) => {
       const button = document.createElement("button");
-      button.innerHTML = `<img src="./assets/${["tower-rapid", "tower-frost", "tower-blast"][types.indexOf(type)]}.svg" alt=""><span>${type.name}<small>${type.cost} 材料 · ${type.hp} 生命</small></span>`;
+      button.innerHTML = `<img src="./assets/${["tower-rapid", "tower-frost", "tower-blast"][types.indexOf(type)]}.svg" alt=""><span>${type.name}<small>${type.cost} 材料 · 60 秒</small></span>`;
       button.setAttribute(
         "aria-label",
         `${type.name}，${type.cost} 材料，按住拖动建造`,
@@ -98,7 +97,7 @@ export class Defenses {
     });
     const tip = document.createElement("small");
     tip.className = "build-tip";
-    tip.textContent = "按住暂停 · 松手建造";
+    tip.textContent = "松手建造 · 点塔升级";
     this.tools.append(tip);
     this.refresh();
     const cancelOnBlur = () => this.cancel();
@@ -119,7 +118,7 @@ export class Defenses {
     this.buttons.forEach((button, i) => {
       button.disabled = this.stock < types[i].cost;
       button.querySelector("small").innerHTML =
-        `材料 ${types[i].cost}<br>生命 ${towerMaxHp(types[i], this.scene.runTime)}`;
+        `材料 ${types[i].cost}<br>持续 60 秒`;
     });
   }
   cancel() {
@@ -231,10 +230,8 @@ export class Defenses {
       .circle(x, y, 10, 0xe5d6ab)
       .setStrokeStyle(3, 0x292822)
       .setDepth(5);
-    const health = scene.add.graphics().setDepth(9);
-    const hp = towerMaxHp(type, scene.runTime);
     const label = scene.add
-      .text(x, y - 46, `${hp} / ${hp}`, {
+      .text(x, y - 34, "", {
         fontFamily: "Arial, Microsoft YaHei, sans-serif",
         fontSize: "11px",
         color: "#fff2d0",
@@ -250,16 +247,14 @@ export class Defenses {
       barrel,
       s: base,
       hub,
-      health,
       label,
-      hp,
-      maxHp: hp,
+      level: 1,
+      lifetime: 60,
       r: halfTower,
-      hitFlash: 0,
       remaining: 0,
     };
     this.towers.push(tower);
-    this.drawHealth(tower);
+    this.updateLabel(tower);
     this.stock -= type.cost;
     this.refresh();
     scene.effect(
@@ -272,14 +267,30 @@ export class Defenses {
   }
   drop(enemy) {
     const value = materialDrop(enemy);
-    if (!value || enemy.materialDropped) return;
-    enemy.materialDropped = true;
-    // The final kill ends simulation immediately, so grant its loot directly.
+    if (enemy.lootDropped) return;
+    enemy.lootDropped = true;
+    if ((enemy.elite || enemy.boss) && this.scene.build.random() < (enemy.boss ? 0.55 : 0.25)) {
+      const type = mounts[Math.floor(this.scene.build.random() * mounts.length)];
+      const sprite = this.scene.add.image(enemy.s.x - 20, enemy.s.y, "mount-" + type.id)
+        .setDisplaySize(60, 42).setDepth(3);
+      this.confine(sprite, 30);
+      this.drops.push({ kind: "mount", type, sprite });
+    }
     if (enemy.final) {
       this.stock += value;
       this.refresh();
       return;
     }
+    const roll = this.scene.build.random();
+    const kind = roll < 0.045 ? "health" : roll < 0.055 ? "magnet" : null;
+    if (kind) {
+      const sprite = this.scene.add.text(enemy.s.x + 12, enemy.s.y,
+        kind === "health" ? "✚" : "🧲", { fontSize: "24px", color: "#fff", backgroundColor: kind === "health" ? "#a53236" : "#493e33" }
+      ).setOrigin(0.5).setDepth(3);
+      this.confine(sprite, 14);
+      this.drops.push({ sprite, kind });
+    }
+    if (!value) return;
     const sprite = this.scene.add
       .rectangle(enemy.s.x, enemy.s.y, 12, 12, 0xfac969)
       .setAngle(45)
@@ -288,27 +299,32 @@ export class Defenses {
     this.confine(sprite, 12);
     this.drops.push({ sprite, value });
   }
-  drawHealth(tower) {
-    const ratio = tower.hp / tower.maxHp;
-    tower.health
-      .clear()
-      .fillStyle(0x302b25)
-      .fillRoundedRect(tower.x - 29, tower.y - 43, 58, 8, 3)
-      .fillStyle(ratio > 0.5 ? 0x9fca7e : ratio > 0.25 ? 0xf0c368 : 0xe97e67)
-      .fillRect(tower.x - 27, tower.y - 41, 54 * ratio, 4);
-    tower.label.setText(`${Math.ceil(tower.hp)} / ${tower.maxHp}`);
+  updateLabel(tower) {
+    const cost = tower.type.cost + tower.level - 1;
+    tower.label.setText(tower.level === 5 ? "Lv.5 · 永久" :
+      `Lv.${tower.level} · ${Math.ceil(tower.lifetime)}秒 · 升级◆${cost}`);
   }
-  damage(tower, amount) {
-    if (this.scene.mode !== "play" || tower.hp <= 0 || amount <= 0) return 0;
-    const actual = Math.min(tower.hp, amount);
-    tower.hp -= actual;
-    tower.hitFlash = 0.14;
-    tower.s.setTint(0xff8b78);
-    this.drawHealth(tower);
-    this.scene.damageNumbers.add(tower, actual, { structure: true });
-    this.scene.burst(tower.x, tower.y, 0xef9471, 4, 60);
-    if (!tower.hp) this.destroyTower(tower);
-    return actual;
+  tapTower(event) {
+    if (this.scene.mode !== "play") return false;
+    const box = event.target.getBoundingClientRect();
+    const scale = this.scene.scale;
+    const point = this.scene.cameras.main.getWorldPoint(
+      (event.clientX - box.left) * scale.width / box.width,
+      (event.clientY - box.top) * scale.height / box.height
+    );
+    const tower = this.towers.find(t => this.scene.distance(t, point) <= halfTower);
+    if (!tower) return false;
+    this.upgradeTower(tower);
+    return true;
+  }
+  upgradeTower(tower) {
+    const cost = tower.type.cost + tower.level - 1;
+    if (tower.level >= 5 || this.stock < cost) return;
+    this.stock -= cost;
+    tower.level++;
+    tower.lifetime = tower.level === 5 ? Infinity : 60 * tower.level;
+    this.updateLabel(tower);
+    this.refresh();
   }
   destroyTower(tower) {
     const index = this.towers.indexOf(tower);
@@ -319,7 +335,6 @@ export class Defenses {
       tower.s,
       tower.barrel,
       tower.hub,
-      tower.health,
       tower.label,
     ])
       part.destroy();
@@ -335,102 +350,62 @@ export class Defenses {
       2,
     );
   }
-  targetFor(enemy) {
-    const player = this.scene.player;
-    const playerGap = this.scene.distance(enemy.s, player) - 18;
-    // Close contact keeps pressure on the player; otherwise nearby towers draw aggro.
-    if (playerGap <= enemy.r + 18) return null;
-    const held = enemy.towerTarget;
-    if (
-      held?.hp > 0 &&
-      this.scene.distance(enemy.s, held) - halfTower <
-        Math.min(BALANCE.siege.aggroRange * 1.25, playerGap + 40)
-    )
-      return held;
-    let target = null,
-      nearest = Math.min(BALANCE.siege.aggroRange, playerGap);
-    for (const tower of this.towers) {
-      const gap = this.scene.distance(enemy.s, tower) - halfTower;
-      if (tower.hp > 0 && gap < nearest) {
-        target = tower;
-        nearest = gap;
-      }
-    }
-    return target;
-  }
-  attackTower(enemy, dt) {
-    const tower = enemy.towerTarget;
-    enemy.towerCooldown = Math.max(0, (enemy.towerCooldown || 0) - dt);
-    if (
-      !tower ||
-      tower.hp <= 0 ||
-      this.scene.distance(enemy.s, tower) > enemy.r + halfTower + 8
-    ) {
-      enemy.towerWindup = null;
-      return;
-    }
-    if (enemy.towerCooldown > 0) return;
-    enemy.towerWindup = (enemy.towerWindup ?? BALANCE.siege.windup) - dt;
-    this.scene.enemyTelegraphs
-      .lineStyle(3, 0xe16b4a, 0.9)
-      .strokeCircle(enemy.s.x, enemy.s.y, enemy.r + 5)
-      .lineBetween(enemy.s.x, enemy.s.y, tower.x, tower.y);
-    if (enemy.towerWindup <= 0) {
-      this.damage(tower, enemy.damage ?? 9);
-      enemy.towerWindup = null;
-      enemy.towerCooldown = BALANCE.siege.cooldown;
-    }
-  }
-  projectileHit(from, to, radius = 7) {
-    let hit = null;
-    for (const tower of this.towers) {
-      const time = segmentCircleEntry(from, to, tower, halfTower + radius);
-      if (time !== null && (!hit || time < hit.time)) hit = { tower, time };
-    }
-    return hit;
-  }
   update(dt) {
-    const scene = this.scene,
-      player = scene.player;
-    const minute = Math.min(
-      BALANCE.fortification.maxMinutes,
-      Math.floor(scene.runTime / 60),
-    );
-    if (minute !== this.reinforcementMinute) {
-      this.reinforcementMinute = minute;
-      for (const tower of this.towers) {
-        const ratio = tower.hp / tower.maxHp;
-        tower.maxHp = towerMaxHp(tower.type, scene.runTime);
-        tower.hp = ratio * tower.maxHp;
-        this.drawHealth(tower);
-      }
-      this.refresh();
-    }
+    const scene = this.scene, player = scene.player;
+    if (scene.mode !== "play") return;
     this.drawPreview();
     for (let i = this.drops.length - 1; i >= 0; i--) {
-      const { sprite, value } = this.drops[i],
+      const drop = this.drops[i];
+      const { sprite, value, kind } = drop,
         d = scene.distance(sprite, player);
-      if (d < 24) {
+      if (!kind && (drop.flight || drop.magnetized || d < BALANCE.player.pickup * scene.build.pickupMultiplier)) {
+        drop.flight ??= { x: sprite.x, y: sprite.y, elapsed: 0,
+          duration: clamp(d / 550, 0.28, 0.8) };
+        const flight = drop.flight;
+        flight.elapsed += dt;
+        const t = Math.min(1, flight.elapsed / flight.duration);
+        const progress = t * t;
+        sprite.x = flight.x + (player.x - flight.x) * progress;
+        sprite.y = flight.y + (player.y - flight.y) * progress - Math.sin(Math.PI * t) * 24;
+        if (t < 1) continue;
         sprite.destroy();
         this.drops.splice(i, 1);
         this.stock += value;
         this.refresh();
+      } else if (kind && d < 24) {
+        sprite.destroy();
+        this.drops.splice(i, 1);
+        if (kind === "mount") {
+          ride(scene, drop.type);
+        } else if (kind === "magnet") {
+          for (const gem of scene.gems) gem.setPosition(player.x, player.y);
+          for (const other of this.drops) {
+            if (other.kind) other.sprite.setPosition(player.x, player.y);
+            else other.magnetized = true;
+          }
+        } else if (kind === "health") {
+          scene.hp = Math.min(scene.maxHp, scene.hp + 25);
+          scene.sync();
+        }
       } else if (d < BALANCE.player.pickup * scene.build.pickupMultiplier) {
         sprite.x += ((player.x - sprite.x) / d) * 300 * dt;
         sprite.y += ((player.y - sprite.y) / d) * 300 * dt;
       }
     }
-    for (const tower of this.towers) {
+    for (const tower of [...this.towers]) {
       if (scene.mode !== "play") break;
-      if (tower.hitFlash > 0) {
-        tower.hitFlash -= dt;
-        if (tower.hitFlash <= 0) tower.s.clearTint();
+      tower.lifetime -= dt;
+      if (tower.lifetime <= 0) {
+        this.destroyTower(tower);
+        continue;
       }
+      this.updateLabel(tower);
+      const rank = tower.level - 1;
       tower.remaining -= dt;
       if (tower.remaining > 0) continue;
       const { type, x, y } = tower;
       let target = null,
-        nearest = type.range;
+        nearest = type.range * (1 + 0.10 * rank);
       for (const enemy of scene.enemies) {
         const d = scene.distance(tower, enemy.s);
         if (d <= nearest) {
@@ -439,7 +414,7 @@ export class Defenses {
         }
       }
       if (!target) continue;
-      tower.remaining = type.cooldown * (1 - scene.build.haste);
+      tower.remaining = type.cooldown * (1 - 0.08 * rank) * (1 - scene.build.haste);
       const impact = { x: target.s.x, y: target.s.y };
       const angle = Math.atan2(impact.y - y, impact.x - x);
       tower.barrel.setRotation(angle);
@@ -470,13 +445,13 @@ export class Defenses {
           if (scene.distance(impact, enemy.s) <= 70)
             scene.combat.damage(
               enemy,
-              type.damage * scene.build.power,
+              type.damage * (1 + 0.25 * rank) * scene.build.power,
               type.element,
             );
       } else {
         scene.combat.damage(
           target,
-          type.damage * scene.build.power,
+          type.damage * (1 + 0.25 * rank) * scene.build.power,
           type.element,
         );
       }

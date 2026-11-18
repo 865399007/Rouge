@@ -10,8 +10,14 @@ export class Roll {
     this.direction = { ...this.facing };
     this.trailClock = 0;
     this.button = document.getElementById("roll");
-    this.label = this.button.querySelector("small");
-    this.button.onclick = () => this.start();
+    this.button.onpointerdown = (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      this.start();
+    };
+    this.button.onclick = (event) => {
+      if (!event.detail) this.start();
+    };
     const onKey = (event) => {
       if (!event.repeat && !event.target.closest("input,textarea"))
         this.start();
@@ -19,7 +25,7 @@ export class Roll {
     scene.input.keyboard.on("keydown-SHIFT", onKey);
     scene.events.once("shutdown", () => {
       scene.input.keyboard.off("keydown-SHIFT", onKey);
-      this.button.onclick = null;
+      this.button.onpointerdown = this.button.onclick = null;
     });
     this.sync();
   }
@@ -83,8 +89,6 @@ export class Roll {
       "--roll-ready",
       `${(1 - this.cooldown / BALANCE.roll.cooldown) * 100}%`,
     );
-    this.label.textContent =
-      this.cooldown > 0 ? `${this.cooldown.toFixed(1)}s` : "SHIFT · 就绪";
     this.button.setAttribute(
       "aria-label",
       this.cooldown > 0

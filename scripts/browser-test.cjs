@@ -38,7 +38,7 @@ const assert=require('node:assert/strict');
  await page.locator('.choice-card').first().click();
  assert.equal(await page.evaluate(()=>__game.scene.getScene('garden').mode),'play');
  await page.evaluate(()=>{const s=__game.scene.getScene('garden');s.spawnBoss(45)});await page.waitForTimeout(100);
- assert.equal(await page.locator('#boss-hud').isVisible(),true);
+ assert.equal(await page.locator('#boss-hud').count(),0);
  await page.locator('.settings summary').click();await page.locator('#restart').click();
  await page.waitForTimeout(500);assert.equal(await page.locator('.modal-overlay').count(),1);
  assert.equal(await page.evaluate(()=>__game.scene.getScene('garden').defenses.towers.length),0);

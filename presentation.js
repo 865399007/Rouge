@@ -1,6 +1,7 @@
 import { BALANCE } from "./balance.js";
 // Original vector art and presentation layer.
 export const artKeys = [
+  "mount-walker", "mount-stag", "mount-drake", "mount-lynx", "mount-boar",
   "hero-ranger",
   "hero-vanguard",
   "hero-pyromancer",
@@ -285,31 +286,19 @@ export function updatePresentation(scene, moving) {
     .padStart(2, "0")}:${Math.floor(scene.runTime % 60)
     .toString()
     .padStart(2, "0")}`;
-  const boss = scene.enemies.find((e) => e.boss);
   const next = scene.bossTimes.find((t) => !scene.nodes.has(t));
   const warning = document.getElementById("boss-warning");
   warning.hidden =
     next === undefined || next - scene.runTime > BALANCE.bossWarning;
   if (!warning.hidden)
     warning.textContent = `${next === 540 ? "最终首领" : "街区首领"}将在 ${Math.max(0, Math.ceil(next - scene.runTime))} 秒后抵达`;
-  const bossHud = document.getElementById("boss-hud");
-  bossHud.hidden = !boss;
-  if (boss) {
-    bossHud.querySelector("strong").textContent = boss.final
-      ? "终夜领主"
-      : "街区暴君";
-    bossHud.querySelector("i").style.width =
-      `${Math.max(0, boss.hp / boss.maxHp) * 100}%`;
-    bossHud.querySelector("span").textContent =
-      `${Math.ceil(Math.max(0, boss.hp))} / ${boss.maxHp}`;
-  }
   document
     .getElementById("game")
     .classList.toggle("low-health", scene.hp / scene.maxHp < 0.3);
   const bounce = moving ? Math.sin(scene.runTime * 17) : 0;
   scene.player.setScale(
-    1 + Math.abs(bounce) * 0.035,
-    1 - Math.abs(bounce) * 0.045,
+    (scene.mount ? 0.75 : 1) * (1 + Math.abs(bounce) * 0.035),
+    (scene.mount ? 0.75 : 1) * (1 - Math.abs(bounce) * 0.045),
   );
   const target = scene.enemies.reduce(
     (best, e) =>

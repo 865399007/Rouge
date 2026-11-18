@@ -95,12 +95,8 @@ export class Build {
         level: s.level + 1,
         previous: s.level,
       }));
-    const fresh =
-      this.active.length < 4
-        ? skills
-            .filter((s) => !this.active.some((a) => a.id === s.id))
-            .map((s) => ({ ...s, kind: "skill", level: 1, previous: 0 }))
-        : [];
+    const take = (pool) =>
+      pool.splice(Math.floor(this.random() * pool.length), 1)[0];
     const stats = ATTRIBUTES.filter(
       (a) => (this.attributes[a.id] || 0) < a.max,
     ).map((a) => ({
@@ -108,8 +104,26 @@ export class Build {
       kind: "attribute",
       level: (this.attributes[a.id] || 0) + 1,
     }));
-    const take = (pool) =>
-      pool.splice(Math.floor(this.random() * pool.length), 1)[0];
+    const supply = {
+        id: "heal_supply",
+        kind: "supply",
+        name: "战地补给",
+        description: "恢复 30 生命",
+        level: 1,
+    };
+    if (this.active.length >= 4) {
+      const choices = [];
+      const others = [...stats, supply];
+      const maximum = Math.min(3, equipped.length);
+      const minimum = Math.min(maximum, Math.max(1, 3 - others.length));
+      const count = minimum + Math.floor(this.random() * (maximum - minimum + 1));
+      while (choices.length < count) choices.push(take(equipped));
+      while (choices.length < 3 && others.length) choices.push(take(others));
+      return choices;
+    }
+    const fresh = skills
+      .filter((s) => !this.active.some((a) => a.id === s.id))
+      .map((s) => ({ ...s, kind: "skill", level: 1, previous: 0 }));
     const choices = [];
     if (equipped.length) choices.push(take(equipped));
     if (fresh.length) choices.push(take(fresh));
@@ -117,13 +131,7 @@ export class Build {
     const rest = [...equipped, ...fresh, ...stats];
     while (choices.length < 3 && rest.length) choices.push(take(rest));
     if (choices.length < 3)
-      choices.push({
-        id: "heal_supply",
-        kind: "supply",
-        name: "战地补给",
-        description: "恢复 30 生命",
-        level: 1,
-      });
+      choices.push(supply);
     return choices;
   }
   apply(choice, scene) {

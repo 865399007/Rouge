@@ -87,27 +87,8 @@ canvas {
   position: absolute;
   left: 24px;
   top: 22px;
-  width: 300px;
-  display: flex;
-  gap: 12px;
-  padding: 12px 14px;
-}
-.survivor-avatar {
-  width: 52px;
-  flex-shrink: 0;
-  align-self: center;
-  height: 60px;
-  background: #d6c9a4;
-  border: 2px solid var(--ink);
-  border-radius: 9px;
-  overflow: hidden;
-}
-.survivor-avatar img {
-  height: 70px;
-  transform: translate(-6px, -2px);
-}
-.vitals-bars {
-  flex: 1;
+  width: 240px;
+  text-shadow: 0 1px 2px #fff1d2;
 }
 .health-label {
   display: flex;
@@ -212,6 +193,15 @@ canvas {
 .settings summary:hover {
   background: #fff3d4;
 }
+.game-top > button,
+.game-top > button:hover,
+.game-top > .settings > summary,
+.game-top > .settings > summary:hover {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  text-shadow: 0 1px 2px #fff1d2;
+}
 .settings summary {
   list-style: none;
   cursor: pointer;
@@ -246,7 +236,8 @@ canvas {
   font-size: 11px;
 }
 .stats span {
-  color: #837357;
+  text-shadow: 0 1px 2px #fff1d2;
+  color: #514634;
 }
 .stats b {
   color: var(--ink);
@@ -407,29 +398,6 @@ kbd {
   border: 2px solid var(--ink);
   background: #f6d983;
   transform: translate(-50%, -50%);
-}
-#boss-hud {
-  position: absolute;
-  top: 124px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 300px;
-  padding: 10px 14px;
-  border: 2px solid var(--ink);
-  border-radius: 8px;
-  background: #f2e7ccd9;
-  font-size: 11px;
-}
-#boss-hud strong {
-  color: #943e35;
-}
-#boss-hud span {
-  float: right;
-  font-size: 10px;
-}
-#boss-hud .bar {
-  margin-top: 7px;
-  height: 9px;
 }
 .low-health:after {
   content: "";
@@ -871,7 +839,7 @@ kbd {
 }
 @media (min-width: 1600px) {
   .vitals {
-    width: 340px;
+    width: 280px;
   }
   .hud {
     font-size: 15px;
@@ -882,7 +850,7 @@ kbd {
 }
 @media (max-width: 1100px) {
   .vitals {
-    width: 265px;
+    width: 210px;
     left: 16px;
     top: 16px;
   }
@@ -1053,16 +1021,6 @@ kbd {
   .stats b {
     font-size: 15px;
   }
-  .vitals {
-    padding: 9px 11px;
-  }
-  .survivor-avatar {
-    height: 50px;
-    width: 43px;
-  }
-  .survivor-avatar img {
-    height: 59px;
-  }
   .mission-clock > strong {
     font-size: 27px;
   }
@@ -1207,18 +1165,9 @@ kbd {
     font-size: 11px;
   }
   .vitals {
-    width: 210px;
+    width: 180px;
     left: 10px;
     top: 10px;
-    padding: 9px;
-    gap: 8px;
-  }
-  .survivor-avatar {
-    width: 35px;
-    height: 44px;
-  }
-  .survivor-avatar img {
-    height: 51px;
   }
   .health-label {
     font-size: 10px;
@@ -1335,10 +1284,6 @@ kbd {
   #skills small {
     font-size: 8px;
   }
-  #boss-hud {
-    top: 153px;
-    width: 220px;
-  }
   .orientation-hint {
     display: none;
   }
@@ -1405,9 +1350,6 @@ kbd {
   font-weight: bold;
   white-space: nowrap;
 }
-#boss-warning:not([hidden]) + #boss-hud {
-  top: 158px;
-}
 @media (max-width: 700px) {
   .class-card .class-portrait {
     height: 100px;
@@ -1419,9 +1361,6 @@ kbd {
     top: 145px;
     font-size: 10px;
     padding: 7px 10px;
-  }
-  #boss-warning:not([hidden]) + #boss-hud {
-    top: 185px;
   }
 }
 @media (max-height: 650px) and (min-width: 701px) {
@@ -1474,9 +1413,10 @@ kbd {
 .roll-button {
   position: absolute;
   right: 26px;
+  padding: 0;
   bottom: 108px;
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   border: 3px solid #302e26;
   border-radius: 50%;
   display: flex;
@@ -1493,16 +1433,11 @@ kbd {
   touch-action: none;
   cursor: pointer;
 }
-.roll-button span {
-  font-size: 27px;
-  line-height: 26px;
-}
-.roll-button strong {
-  font-size: 13px;
-}
-.roll-button small {
-  font-size: 9px;
-  font-variant-numeric: tabular-nums;
+.roll-button .dodge-icon {
+  display: block;
+  width: 78%;
+  height: 78%;
+  pointer-events: none;
 }
 .roll-button:disabled {
   cursor: default;
@@ -1519,15 +1454,15 @@ kbd {
   .roll-button {
     right: 18px;
     bottom: 145px;
-    width: 76px;
-    height: 76px;
+    width: 60px;
+    height: 60px;
   }
 }
 @media (max-height: 500px) and (min-width: 601px) {
   .roll-button {
     right: 154px;
     bottom: 85px;
-    width: 70px;
-    height: 70px;
+    width: 56px;
+    height: 56px;
   }
 }

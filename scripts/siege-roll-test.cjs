@@ -70,6 +70,7 @@ const assert = require("node:assert/strict");
   });
   const loot = await page.evaluate(() => {
     const s = __game.scene.getScene("garden");
+    s.build.random = () => 0.9;
     const normal = __enemy(1080, 1000, { hp: 1 });
     s.hit(normal, 100);
     const ordinaryDrops = s.defenses.drops.length;
@@ -112,81 +113,27 @@ const assert = require("node:assert/strict");
   assert.equal(spawning.early, 0);
   assert.equal(spawning.elites, 1);
   assert.ok(spawning.next >= 55);
-  const siege = await page.evaluate(() => {
+  await page.evaluate(() => {
     __reset();
     const s = __game.scene.getScene("garden");
-    const tower = __tower();
-    const e = __enemy(1250, 1000, { hp: 9999, maxHp: 9999 });
-    __ticks(36);
-    const afterMelee = tower.hp,
-      targeting = e.towerTarget === tower;
-    const beforePause = tower.hp;
-    s.beginPlacement();
-    __ticks(60);
-    const duringPause = tower.hp;
-    s.endPlacement();
-    e.frozenUntil = s.combat.time + 10;
-    __ticks(40);
-    const frozenHp = tower.hp;
-    e.frozenUntil = 0;
-    e.s.setPosition(1400, 1000);
-    e.ranged = true;
-    e.speed = 0;
-    e.shot = 0;
-    __ticks(44);
-    const afterRanged = tower.hp;
-    e.ranged = false;
-    e.boss = true;
-    e.shot = 0;
-    __ticks(44);
-    const afterBoss = tower.hp;
-    s.defenses.damage(tower, 9999);
-    __ticks(1);
-    return {
-      afterMelee,
-      targeting,
-      beforePause,
-      duringPause,
-      frozenHp,
-      afterRanged,
-      afterBoss,
-      destroyed: s.defenses.towers.length === 0,
-      spritesGone: [
-        tower.s,
-        tower.barrel,
-        tower.hub,
-        tower.health,
-        tower.label,
-      ].every((p) => !p.active),
-      retargeted: e.towerTarget === null,
-      playerHp: s.hp,
-    };
+    const camera = s.cameras.main;
+    const p = camera.getWorldPoint(camera.width * 0.52, camera.height * 0.43);
+    __tower(p.x, p.y);
+    s.scene.resume();
   });
-  assert.equal(siege.targeting, true);
-  assert.ok(siege.afterMelee < 180);
-  assert.equal(siege.beforePause, siege.duringPause);
-  assert.equal(siege.frozenHp, siege.beforePause);
-  assert.ok(siege.afterRanged < siege.frozenHp);
-  assert.ok(siege.afterBoss < siege.afterRanged);
-  assert.equal(siege.destroyed, true);
-  assert.equal(siege.spritesGone, true);
-  assert.equal(siege.retargeted, true);
-  assert.equal(siege.playerHp, 85);
-  const blocking = await page.evaluate(() => {
+  const canvas = await page.locator("canvas").boundingBox();
+  await page.mouse.click(canvas.x + canvas.width * 0.52, canvas.y + canvas.height * 0.43);
+  assert.equal(await page.evaluate(() => __game.scene.getScene("garden").defenses.towers[0].level), 2);
+  await page.evaluate(() => __game.scene.getScene("garden").scene.pause());
+  const lifespan = await page.evaluate(() => {
     __reset();
-    const s = __game.scene.getScene("garden"),
-      tower = __tower();
-    s.hostile.push({
-      s: s.add.image(1300, 1000, "orb"),
-      vx: -12000,
-      vy: 0,
-      life: 4,
-      damage: 25,
-    });
-    __ticks(1);
-    return { hp: s.hp, tower: tower.hp, bullets: s.hostile.length };
+    const s = __game.scene.getScene("garden"), tower = __tower();
+    s.defenses.upgradeTower(tower);
+    const refreshed = tower.lifetime;
+    s.defenses.update(120);
+    return { refreshed, towers: s.defenses.towers.length };
   });
-  assert.deepEqual(blocking, { hp: 85, tower: 155, bullets: 0 });
+  assert.deepEqual(lifespan, { refreshed: 120, towers: 0 });
   // Use the actual persistent button, not just the start method.
   await page.evaluate(() => __reset());
   await page.locator("#roll").click();
@@ -266,7 +213,7 @@ const assert = require("node:assert/strict");
     __reset();
     const s = __game.scene.getScene("garden");
     const tower = __tower(1120, 1060);
-    s.defenses.damage(tower, 55);
+    s.defenses.upgradeTower(tower);
     __enemy(1280, 1080, { ...__tuning.eliteStats(25), speed: 0, hp: 150 });
     s.scene.resume();
   });
@@ -299,10 +246,15 @@ const assert = require("node:assert/strict");
     });
     assert.equal(covered, "roll");
     const cdp = await page.context().newCDPSession(page);
+    const left = { x: 70, y: viewport.height * 0.58, id: 1 };
+    await cdp.send("Input.dispatchTouchEvent", {type: "touchStart", touchPoints: [left]});
+    left.x += 28;
+    await cdp.send("Input.dispatchTouchEvent", {type: "touchMove", touchPoints: [left]});
+    assert.ok(await page.evaluate(() => __game.scene.getScene("garden").movementInput().x > 0));
     await cdp.send("Input.dispatchTouchEvent", {
       type: "touchStart",
       touchPoints: [
-        { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
+        left, { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, id: 2 },
       ],
     });
     await cdp.send("Input.dispatchTouchEvent", {
@@ -337,7 +289,7 @@ const assert = require("node:assert/strict");
   );
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: elite/Boss loot and pickup, elite schedule, melee/ranged/Boss siege, frozen attackers, pause, destruction, projectile blocking, button/Shift/touch roll, invulnerability, exact cooldown, collision, responsive layout and restart",
+    "PASS: elite/Boss loot and pickup, elite schedule, tower upgrade and expiration, button/Shift/touch roll, invulnerability, exact cooldown, collision, responsive layout and restart",
   );
   await browser.close();
 })().catch((e) => {
