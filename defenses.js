@@ -213,10 +213,9 @@ export class Defenses {
     const roll = this.scene.build.random();
     const kind = roll < 0.045 ? "health" : roll < 0.055 ? "magnet" : null;
     if (kind) {
-      const sprite = this.scene.add.text(enemy.s.x + 12, enemy.s.y,
-        kind === "health" ? "✚" : "🧲", { fontSize: "24px", color: "#fff", backgroundColor: kind === "health" ? "#a53236" : "#493e33" }
-      ).setOrigin(0.5).setDepth(3);
-      this.confine(sprite, 14);
+      const sprite = this.scene.add.image(enemy.s.x + 12, enemy.s.y, "drop-" + kind)
+        .setDisplaySize(44, 44).setDepth(3.1);
+      this.confine(sprite, 22);
       this.drops.push({ sprite, kind });
     }
     if (!value) return;

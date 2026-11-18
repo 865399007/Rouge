@@ -22,6 +22,7 @@ export const artKeys = [
   "runner",
   "spitter",
   "gem",
+  "drop-magnet", "drop-health",
   "gun",
   "pea",
   "orb",
