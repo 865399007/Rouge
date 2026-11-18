@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <g stroke="#3c302c" stroke-linejoin="round">
-    <path d="M21 20v-7q0-6 6-6h10q6 0 6 6v7h-6v-7H27v7Z" fill="#dcae78" stroke-width="3"/>
-    <rect x="5" y="18" width="54" height="39" rx="9" fill="#c94f3c" stroke-width="3.5"/>
-    <path d="M9 32h46" fill="none" stroke="#853d34" stroke-width="3"/>
+  <g stroke="#4e3e39" stroke-linejoin="round">
+    <path d="M21 20v-7q0-6 6-6h10q6 0 6 6v7h-6v-7H27v7Z" fill="#ffe29c" stroke-width="3"/>
+    <rect x="5" y="18" width="54" height="39" rx="9" fill="#ff674e" stroke-width="3.5"/>
+    <path d="M9 32h46" fill="none" stroke="#ad4f44" stroke-width="3"/>
   </g>
-  <path d="M11 25q1-3 5-3h29" fill="none" stroke="#ffac79" stroke-width="3" stroke-linecap="round"/>
-  <path d="M27 25h10v8h8v10h-8v8H27v-8h-8V33h8Z" fill="#fff5d8" stroke="#873c33" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M11 25q1-3 5-3h29" fill="none" stroke="#ffe09d" stroke-width="3" stroke-linecap="round"/>
+  <path d="M27 25h10v8h8v10h-8v8H27v-8h-8V33h8Z" fill="#ffffff" stroke="#b04e42" stroke-width="2" stroke-linejoin="round"/>
 </svg>
