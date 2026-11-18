@@ -73,6 +73,7 @@ export class Roll {
       const p = this.scene.player;
       const ghost = this.scene.add
         .image(p.x, p.y, p.texture.key)
+        .setScale(p.scaleX, p.scaleY)
         .setRotation(p.rotation)
         .setTint(0xffe4a0)
         .setAlpha(0.32)

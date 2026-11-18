@@ -1,28 +1,25 @@
-const ambushes = [
-  { start: 225, end: 248, name: "钳形伏击", kinds: ["crab","runner","needle"], count: 3, interval: 0.85, crossfire: true },
-  { start: 405, end: 431, name: "裂阵兽潮", kinds: ["ram","hopper","saw","brute"], count: 4, interval: 0.72, sweep: true },
+// Quotas count every combatant, including the boss. No clock advances the wave.
+export const waves = [
+  {name:"虫群探路", total:18, count:3, interval:1.35, kinds:["bug","bug","moth"]},
+  {name:"双巷夹击", total:26, count:4, interval:1.35, kinds:["runner","bug","runner","moth"], crossfire:true},
+  {name:"铁钳悬赏", total:30, count:3, interval:1.3, kinds:["crab","runner","bug"], bounty:true},
+  {name:"孢子火线", total:35, count:4, interval:1.35, kinds:["pod","hopper","runner","spitter"], crossfire:true},
+  {name:"破门巨兽", total:40, count:4, interval:1.2, kinds:["ram","bug","brute","runner"], bossIndex:0},
+  {name:"旋街追猎", total:48, count:5, interval:1.15, kinds:["saw","hopper","moth"], sweep:true},
+  {name:"针尾伏击", total:55, count:5, interval:1.2, kinds:["needle","crab","wisp","runner","crab"], crossfire:true},
+  {name:"装甲车阵", total:60, count:5, interval:1.1, kinds:["snail","ram","brute","saw"], sweep:true, bossIndex:4},
+  {name:"四面合围", total:72, count:6, interval:1, kinds:["twin","runner","moth","needle","hopper","bug"], surround:true},
+  {name:"黎明决战", total:80, count:6, interval:.95, kinds:["ram","wisp","saw","crab","runner","twin"], surround:true, bossIndex:8},
 ];
-const opening = [
-  { start: 0, end: 50, name: "虫群来袭", kinds: ["bug","bug","moth"], count: 3, interval: 1.65 },
-  { start: 50, end: 60, name: "整备 · 收集战利品", count: 0 },
-  { start: 60, end: 109, name: "交叉火线", kinds: ["runner","spitter"], count: 2, interval: 1.3, crossfire: true },
-  { start: 109, end: 120, name: "整备 · 收集战利品", count: 0 },
-  { start: 120, end: 170, name: "悬赏精英 · 额外材料", kinds: ["bug","crab","runner"], count: 2, interval: 1.22 },
-  { start: 170, end: 180, name: "整备 · 收集战利品", count: 0 },
-];
-export const replacementTimes = ambushes.map(w => w.start);
-export function encounterAt(time) {
-  return opening.find(w => time >= w.start && time < w.end) ||
-    ambushes.find(w => time >= w.start && time < w.end);
-}
 export function encounterAngle(wave, heading, batch, slot) {
+  if (wave.surround) return heading + batch*.37 + slot*Math.PI*2/wave.count;
   if (wave.crossfire) return heading + (slot % 2) * Math.PI + Math.sin(batch * 0.55) * 0.23;
   if (wave.sweep) return heading + Math.floor(batch / 4) * Math.PI / 2 + slot * 0.14;
   return heading + Math.sin(batch * 0.6) * 0.22 + slot * 0.12;
 }
 
 export function updateSupply(scene, dt) {
-  if (scene.runTime < 120 || scene.supplyClaimed) return;
+  if (scene.wave < 4 || scene.supplyClaimed) return;
   if (!scene.supply) {
     const spot = scene.defenses.spawn(110, 65);
     if (!spot) return;

@@ -9,23 +9,39 @@ const { chromium } = require("./playwright-runtime.cjs");
     await page.waitForFunction(() => window.__game?.scene.getScene("garden")?.player);
     const results = await page.evaluate(async () => {
       const s = __game.scene.getScene("garden");
-      const {updateSupply,updateBossRing} = await import("./encounters.js");
+      const {waves,updateSupply,updateBossRing} = await import("./encounters.js");
       const {skills} = await import("./battle-skills.js");
       s.selectClass("warden");
       s.scene.pause();
-      const times = [...s.bossTimes];
-      s.bossTimes = [];
-      s.weaponClock = 999;
-      const packs = [];
-      for (const time of [0,52,65,121,171,226,406]) {
-        s.enemies.forEach(e=>e.s.destroy());
-        s.enemies = [];
-        s.nextEliteAt = Infinity;
-        s.runTime=time;
-        s.spawnClock=0;
+      const cleared = [], bosses = [];
+      s.runTime = 700; // Time alone must never decide the run.
+      s.invincible = Infinity;
+      s.nextEliteAt = Infinity;
+      s.need = Infinity;
+      let finalBossBeforeVictory = false;
+      for (let wave=1; wave<=waves.length; wave++) {
+        const killsBefore = s.kills;
+        while (s.waveSpawned < waves[wave-1].total) {
+          s.spawnClock=0;
+          s.step(0,1000/30);
+          if (s.mode !== "play") throw Error("premature end");
+          for (const enemy of [...s.enemies]) {
+            if (enemy.boss) bosses.push(s.wave);
+            s.hit(enemy,enemy.hp+1);
+            if (enemy.final) finalBossBeforeVictory = s.mode === "play";
+          }
+        }
+        cleared.push(s.kills-killsBefore);
         s.step(0,1000/30);
-        packs.push(s.enemies.map(e=>e.bounty ? "bounty" : e.kind));
+        if (wave < waves.length) {
+          if (!s.waveBreakUntil || s.wave !== wave) throw Error("missing intermission");
+          s.runTime=s.waveBreakUntil;
+          s.step(0,1000/30);
+          if (s.wave !== wave+1) throw Error("missing next wave");
+        }
       }
+      if (s.mode !== "end" || !finalBossBeforeVictory) throw Error("victory condition");
+      s.closePanel(); s.mode="play"; s.wave=4; s.waveSpawned=0;
       const post=s.supply, stock=s.defenses.stock;
       s.player.setPosition(post.x,post.y);
       updateSupply(s,4);
@@ -79,11 +95,10 @@ const { chromium } = require("./playwright-runtime.cjs");
       const feedback=s.shieldReturnFeedback.bind(s);
       s.shieldReturnFeedback=e=>{doubleHits++;feedback(e);};
       for(let i=0;i<5;i++)s.step(0,1000/30);
-      return {times,packs,banked,reward,ring: ring.length,clearGap:ring.every(c=>c<Math.cos(0.4)),branch,returnDamage,spread,doubleHits};
+      return {cleared,bosses,banked,reward,ring: ring.length,clearGap:ring.every(c=>c<Math.cos(0.4)),branch,returnDamage,spread,doubleHits};
     });
-    assert.deepEqual(results.times,[45,105,165,285,345,465,540]);
-    assert.deepEqual(results.packs.slice(0,5),[["bug","bug","moth"],[],["runner","spitter"],["bounty","crab"],[]]);
-    assert.deepEqual(results.packs.slice(5),[["crab","runner","needle"],["ram","hopper","saw","brute"]]);
+    assert.deepEqual(results.cleared,[18,26,30,35,40,48,55,60,72,80]);
+    assert.deepEqual(results.bosses,[5,8,10]);
     assert.ok(Math.abs(results.banked-4)<0.05);
     assert.equal(results.reward,6);
     assert.equal(results.ring,21);

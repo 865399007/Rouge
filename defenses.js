@@ -149,17 +149,22 @@ export class Defenses {
     const key = ["tower-rapid", "tower-frost", "tower-blast"][
       types.indexOf(type)
     ];
-    const base = scene.add.image(x, y + 2, key).setDepth(3);
-    const barrel = scene.add.graphics({ x, y }).setDepth(4);
-    barrel.fillStyle(0x292822).fillRoundedRect(4, -8, 37, 16, 4);
-    barrel.fillStyle(type.color).fillRoundedRect(6, -5, 32, 10, 2);
-    barrel.fillStyle(0x657163).fillRect(31, -5, 6, 10);
-    const hub = scene.add
-      .circle(x, y, 10, 0xe5d6ab)
-      .setStrokeStyle(3, 0x292822)
-      .setDepth(5);
+    const base = scene.add.image(x, y - 12, key).setDepth(3);
+    const barrel = scene.add.graphics({ x, y: y - 30 }).setDepth(4);
+    const outline = 0x37322a;
+    if (type.element === "physical") {
+      for (const offset of [-5, 3]) {
+        barrel.fillStyle(outline).fillRect(0, offset-2, 32, 7)
+          .fillStyle(type.color).fillRect(2, offset, 27, 3);
+      }
+    } else if (type.element === "fire") {
+      barrel.fillStyle(outline).fillRoundedRect(-5,-8,33,16,3)
+        .fillStyle(0xbd7752).fillRect(1,-5,21,10)
+        .fillStyle(outline).fillRect(21,-10,10,20)
+        .fillStyle(0xffb96b).fillRect(27,-6,3,12);
+    }
     const label = scene.add
-      .text(x, y - 34, "", {
+      .text(x, y - 55, "", {
         fontFamily: "Arial, Microsoft YaHei, sans-serif",
         fontSize: "11px",
         color: "#fff2d0",
@@ -174,7 +179,6 @@ export class Defenses {
       type,
       barrel,
       s: base,
-      hub,
       label,
       level: 1,
       lifetime: 60,
@@ -251,7 +255,7 @@ export class Defenses {
     if (!this.selectedTower) return;
     const view = this.scene.cameras.main.worldView;
     this.upgradeButton.style.left = (this.selectedTower.x - view.x) / view.width * 100 + "%";
-    this.upgradeButton.style.top = (this.selectedTower.y - view.y) / view.height * 100 + "%";
+    this.upgradeButton.style.top = (this.selectedTower.s.y - view.y) / view.height * 100 + "%";
   }
   towerAtPointer(event) {
     if (this.scene.mode !== "play") return false;
@@ -261,7 +265,8 @@ export class Defenses {
       (event.clientX - box.left) * scale.width / box.width,
       (event.clientY - box.top) * scale.height / box.height
     );
-    return this.towers.find(t => this.scene.distance(t, point) <= halfTower);
+    return this.towers.find(t => this.scene.distance(t, point) <= halfTower ||
+      (Math.abs(t.x - point.x) <= 24 && point.y >= t.y - 53 && point.y <= t.y));
   }
   upgradeTower(tower) {
     const cost = tower.type.cost + tower.level - 1;
@@ -282,7 +287,6 @@ export class Defenses {
     for (const part of [
       tower.s,
       tower.barrel,
-      tower.hub,
       tower.label,
     ])
       part.destroy();
@@ -352,10 +356,12 @@ export class Defenses {
       if (!target) continue;
       tower.remaining = type.cooldown * (1 - 0.08 * rank) * (1 - scene.build.haste);
       const impact = { x: target.s.x, y: target.s.y };
-      const angle = Math.atan2(impact.y - y, impact.x - x);
+      const pivotY = tower.barrel.y;
+      const angle = Math.atan2(impact.y - pivotY, impact.x - x);
       tower.barrel.setRotation(angle);
-      const muzzleX = x + 38 * Math.cos(angle),
-        muzzleY = y + 38 * Math.sin(angle);
+      const reach = type.element === "ice" ? 0 : 31;
+      const muzzleX = x + reach * Math.cos(angle),
+        muzzleY = pivotY + reach * Math.sin(angle);
       scene.effect(
         scene.add.circle(muzzleX, muzzleY, 8, type.color).setDepth(7),
         0.16,

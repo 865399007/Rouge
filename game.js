@@ -1,13 +1,10 @@
 import { ImpactAudio } from "./impact-audio.js";
-import { encounterAt, encounterAngle, replacementTimes, updateSupply, updateBossRing } from "./encounters.js";
+import { waves, encounterAngle, updateSupply, updateBossRing } from "./encounters.js";
 import {
   BALANCE,
   xpToNext,
-  spawnInterval,
-  packSize,
   enemyStats,
   eliteStats,
-  enemyKind,
   bossStats,
 } from "./balance.js";
 import { Build, upgradeDescription } from "./progression.js";
@@ -26,9 +23,9 @@ import {
   drawStatusEffects,
   drawOrbit,
   drawArc,
-} from "./presentation.js?v=pickup-art-2";
+} from "./presentation.js?v=ten-waves-1";
 import Lt from "./vendor/phaser.js";
-import { Defenses, advancePickupFlight } from "./defenses.js?v=pickup-art-2";
+import { Defenses, advancePickupFlight } from "./defenses.js?v=ten-waves-1";
 import { segmentCircleEntry } from "./geometry.js";
 import { updateMount } from "./mounts.js";
 import { Roll } from "./roll.js";
@@ -523,12 +520,13 @@ class ge extends Lt.Scene {
       (this.mount = null),
       (this.buffIcons = this.add.container().setDepth(11)),
       (this.accumulator = 0),
-      (this.bossTimes = BALANCE.bosses.filter(t => !replacementTimes.includes(t))),
-      (this.encounter = null),
+      (this.waveSpawned = 0),
+      (this.waveBreakUntil = 0),
+      (this.encounterBatch = 0),
+      (this.encounterHeading = this.build.random()*Math.PI*2),
       (this.supply = null),
       (this.supplyClaimed = false),
       (this.bountySpawned = false),
-      (this.nodes = new Set()),
       (this.hostile = []),
       (this.hp = 100),
       (this.maxHp = 100),
@@ -570,10 +568,10 @@ class ge extends Lt.Scene {
       ),
       this.drawTextures(),
       this.cameras.main.setBackgroundColor("#b9ad91"),
-      (this.player = this.add.image(450, 310, "potato").setDepth(5)),
-      (this.gun = this.add.image(472, 315, "gun").setDepth(6)),
+      (this.player = this.add.image(450, 310, "potato").setScale(BALANCE.player.visualScale).setDepth(5)),
+      (this.gun = this.add.image(472, 315, "gun").setScale(BALANCE.player.visualScale).setDepth(6)),
       (this.ring = this.add
-        .circle(450, 310, 28)
+        .circle(450, 310, 28 * BALANCE.player.visualScale)
         .setStrokeStyle(2, 0xffe7a0, 0.65)),
       (this.defenses = new Defenses(this)),
       this.player.setPosition(
@@ -616,7 +614,7 @@ class ge extends Lt.Scene {
       this.timerText.setVisible(false),
       this.hint.setVisible(false),
       this.sync(),
-      this.showPanel("末日小队", "街区守夜 / 坚持十分钟，等到黎明。", [
+      this.showPanel("末日小队", "清空十波敌人，夺回街区。每波结束可整备 4 秒。", [
         {
           title: "出发，守住这一夜",
           detail: "选择技能，进入街区",
@@ -638,10 +636,6 @@ class ge extends Lt.Scene {
         speed: this.movementSpeed,
         kills: this.kills,
         "xp-label": `${Math.floor(this.xp)} / ${this.need}`,
-        wave:
-          this.runTime >= 600
-            ? "最终加时"
-            : `生存 ${Math.floor(this.runTime / 60)} / 10 分钟`,
       }))
         yt(b).textContent = Y;
       ((yt("hp").style.width = `${(this.hp / this.maxHp) * 100}%`),
@@ -747,8 +741,8 @@ class ge extends Lt.Scene {
     }
   }
   muzzle(b, Y) {
-    const K = this.gun.x + Math.cos(b) * 19,
-      Q = this.gun.y + Math.sin(b) * 19,
+    const K = this.gun.x + Math.cos(b) * 19 * this.gun.scaleX,
+      Q = this.gun.y + Math.sin(b) * 19 * this.gun.scaleY,
       Z = this.add
         .star(K, Q, 5, 4, this.weapon === "corn" ? 18 : 12, 16773808)
         .setRotation(b)
@@ -784,7 +778,7 @@ class ge extends Lt.Scene {
         (K.sprite.y += K.vy * b),
         (K.sprite.rotation += K.spin * b),
         K.sprite.setAlpha((K.alpha * K.life) / K.total),
-        K.sprite.setScale(1 + K.grow * (1 - K.life / K.total)));
+        K.grow && K.sprite.setScale(1 + K.grow * (1 - K.life / K.total)));
     }
   }
   flashTexture(sprite, key, suffix, color) {
@@ -878,7 +872,7 @@ class ge extends Lt.Scene {
       if (index >= 0) this.enemies.splice(index, 1);
       this.kills++;
       if (enemy.boss) this.hp = Math.min(this.maxHp, this.hp + 10);
-      if (enemy.final) this.finish(true);
+
       this.sync();
     }
     return actual;
@@ -1203,7 +1197,6 @@ class ge extends Lt.Scene {
       stat.r,
     );
     if (!pos) {
-      this.nodes.delete(time);
       return;
     }
     const sprite = this.add
@@ -1212,6 +1205,7 @@ class ge extends Lt.Scene {
       .setScale(stat.final ? 3 : 2.15)
       .setTint(stat.final ? 0xe7bbad : 0xd6c293);
     this.enemies.push({ ...stat, s: sprite });
+    return true;
   }
   beginDefeat() {
     if (this.mode !== "play") return;
@@ -1239,8 +1233,8 @@ class ge extends Lt.Scene {
     (pt.play(b ? "win" : "lose"),
       (this.mode = "end"),
       this.showPanel(
-        b ? "救援抵达，你活下来了！" : "你倒在了黎明之前",
-        `生存 ${Math.floor(this.runTime)} 秒 · 击败 ${this.kills} 只丧尸 · 等级 ${this.level}`,
+        b ? "十波防守成功，街区夺回！" : "你倒在了黎明之前",
+        `第 ${this.wave}/10 波 · 用时 ${Math.floor(this.runTime)} 秒 · 击败 ${this.kills} 只丧尸 · 等级 ${this.level}`,
         [
           {
             title: "再次出击 →",
@@ -1288,7 +1282,6 @@ class ge extends Lt.Scene {
         this.sync()),
       (this.runTime += K),
       (this.elapsed = this.runTime),
-      (this.wave = 1 + Math.floor(this.runTime / 30)),
       (this.spawnClock -= K),
       (this.fireClock -= K),
       (this.invincible -= K),
@@ -1312,13 +1305,23 @@ class ge extends Lt.Scene {
         Tt.x ||
         Tt.y,
     );
-    for (const t of this.bossTimes)
-      this.runTime >= t &&
-        !this.nodes.has(t) &&
-        (this.nodes.add(t), this.spawnBoss(t));
-    if (this.runTime >= BALANCE.duration + BALANCE.overtime) {
-      this.finish(!1);
-      return;
+    let encounter = waves[this.wave - 1];
+    if (this.waveSpawned === encounter.total && this.enemies.length === 0) {
+      if (this.wave === waves.length) {
+        this.finish(true);
+        return;
+      }
+      if (!this.waveBreakUntil) {
+        this.waveBreakUntil = this.runTime + 4;
+        for (const shot of this.hostile) shot.s.destroy();
+        this.hostile.length = 0;
+      }
+      if (this.runTime >= this.waveBreakUntil) {
+        this.wave++;
+        encounter = waves[this.wave - 1];
+        this.waveSpawned = this.encounterBatch = this.spawnClock = this.waveBreakUntil = 0;
+        this.encounterHeading = this.build.random()*Math.PI*2;
+      }
     }
     const input = this.movementInput();
     const S = Math.hypot(input.x, input.y);
@@ -1333,62 +1336,50 @@ class ge extends Lt.Scene {
         );
       this.player.rotation = S ? Math.sin(b * 0.018) * 0.08 : 0;
     }
-    const encounter = encounterAt(this.runTime);
-    if (encounter !== this.encounter) {
-      this.encounter = encounter;
-      this.encounterHeading = this.build.random()*Math.PI*2;
-      this.encounterBatch = 0;
-    }
     updateSupply(this,K);
     if (
       (this.defenses.confine(this.player, 25),
       this.player.setAlpha(this.invincible > 0 && !this.healthyTexture ? 0.55 : 1),
-      this.ring.setPosition(this.player.x, this.player.y + 14),
+      this.ring.setPosition(this.player.x, this.player.y + 14 * this.player.scaleY),
       (this.cleanupClock -= K),
       this.cleanupClock <= 0 &&
         ((this.cleanupClock = 1),
-        (this.enemies = this.enemies.filter((t) =>
-          !t.boss && !t.elite && this.distance(this.player, t.s) > 1600
-            ? (t.s.destroy(), !1)
-            : !0,
-        )),
         (this.gems = this.gems.filter((t) =>
           !t.pickupFlight && this.distance(this.player, t) > 1800 ? (t.destroy(), !1) : !0,
         ))),
-      encounter?.count !== 0 && this.runTime < BALANCE.duration &&
+      this.waveSpawned < encounter.total &&
         this.spawnClock <= 0 &&
         this.enemies.length < BALANCE.enemyCap)
     ) {
-      this.spawnClock = encounter?.interval ?? spawnInterval(
-        this.runTime,
-        this.enemies.some((e) => e.boss),
-      );
-      const count = Math.min(encounter?.count ?? packSize(this.runTime), BALANCE.enemyCap - this.enemies.length);
-      const heading = this.build.random() * Math.PI * 2;
+      this.spawnClock = encounter.interval;
+      const count = Math.min(encounter.count, encounter.total - this.waveSpawned, BALANCE.enemyCap - this.enemies.length);
       for (let i = 0; i < count; i++) {
-        const angle = encounter ? encounterAngle(encounter,this.encounterHeading,this.encounterBatch,i)
-          : heading + (i - (count - 1) / 2) * 0.11;
+        if (encounter.bossIndex !== undefined && this.waveSpawned === Math.floor(encounter.total/2)) {
+          if (this.spawnBoss(BALANCE.bosses[encounter.bossIndex])) this.waveSpawned++;
+          continue;
+        }
+        const angle = encounterAngle(encounter,this.encounterHeading,this.encounterBatch,i);
         const point = this.defenses.spawn(
           Math.cos(angle) * 520,
           Math.sin(angle) * 430,
         );
         if (point) {
-          const bounty = encounter?.start === 120 && !this.bountySpawned;
+          const bounty = encounter.bounty && !this.bountySpawned;
           const elite = bounty || this.runTime >= this.nextEliteAt;
           const kind = elite
             ? "brute"
-            : encounter ? encounter.kinds[(i + (encounter.crossfire ? 0 : this.encounterBatch)) % encounter.kinds.length]
-            : enemyKind(this.runTime, this.build.random());
+            : encounter.kinds[(i + (encounter.crossfire ? 0 : this.encounterBatch)) % encounter.kinds.length];
           this.enemies.push({
             ...(elite
-              ? eliteStats(this.runTime)
-              : enemyStats(kind, this.runTime)),
+              ? eliteStats((this.wave - 1)*48)
+              : enemyStats(kind, (this.wave - 1)*48)),
             kind, bounty,
             s: this.add
               .image(point.x, point.y, kind)
               .setDepth(4)
               .setScale(elite ? 1.25 : 1),
           });
+          this.waveSpawned++;
           if (bounty) this.bountySpawned = true;
           if (elite) this.nextEliteAt = this.runTime + BALANCE.elites.interval;
         }
@@ -1398,6 +1389,14 @@ class ge extends Lt.Scene {
     this.enemyTelegraphs.clear();
     for (let t of this.enemies) {
       this.defenses.confine(t.s, t.r);
+      if (this.waveSpawned === encounter.total && this.enemies.length <= 3 &&
+          !this.cameras.main.worldView.contains(t.s.x,t.s.y)) {
+        const angle = Math.atan2(t.s.y-this.player.y,t.s.x-this.player.x);
+        const dx = Math.cos(angle), dy = Math.sin(angle);
+        const x = this.player.x+dx*60, y = this.player.y+dy*60;
+        this.enemyTelegraphs.fillStyle(0xffce73,.95).fillTriangle(
+          x+dx*9,y+dy*9,x-dy*5-dx*3,y+dx*5-dy*3,x+dy*5-dx*3,y-dx*5-dy*3);
+      }
       if (t.elite || t.boss) {
         if (t.bounty) this.enemyTelegraphs.lineStyle(3,0xffdc63).strokeCircle(t.s.x,t.s.y,t.r+10);
         const color = t.boss ? 0xe17055 : 0xf4c875;

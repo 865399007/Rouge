@@ -1,3 +1,4 @@
+import { waves } from "./encounters.js";
 import { BALANCE, variants } from "./balance.js";
 // Original vector art and presentation layer.
 export const artKeys = [
@@ -439,13 +440,17 @@ export function updatePresentation(scene, moving) {
     .padStart(2, "0")}:${Math.floor(scene.runTime % 60)
     .toString()
     .padStart(2, "0")}`;
-  const next = scene.bossTimes.find((t) => !scene.nodes.has(t));
+  const stage = waves[scene.wave - 1];
+  const remaining = stage.total - scene.waveSpawned + scene.enemies.length;
+  const waveLabel = document.getElementById("wave");
+  const waveText = scene.waveBreakUntil
+    ? `整备 ${Math.max(0, Math.ceil(scene.waveBreakUntil-scene.runTime))} 秒 · 下一波 ${waves[scene.wave]?.name}`
+    : `第 ${scene.wave}/${waves.length} 波 · ${stage.name} · 剩 ${remaining}`;
+  if (waveLabel.textContent !== waveText) waveLabel.textContent = waveText;
   const warning = document.getElementById("boss-warning");
-  const imminent = next !== undefined && next - scene.runTime <= BALANCE.bossWarning;
-  const stage = scene.encounter;
-  let notice = "";
-  if (imminent) notice = `${next === 540 ? "最终首领" : "街区首领"}将在 ${Math.max(0, Math.ceil(next - scene.runTime))} 秒后抵达`;
-  else if (stage && scene.runTime - stage.start < 5) notice = stage.name;
+  const bossAt = Math.floor(stage.total/2);
+  const notice = stage.bossIndex !== undefined && scene.waveSpawned <= bossAt && scene.waveSpawned >= bossAt-stage.count
+    ? "首领即将入场" : "";
   if (warning.textContent !== notice) warning.textContent = notice;
   warning.hidden = !notice;
   document
@@ -453,8 +458,8 @@ export function updatePresentation(scene, moving) {
     .classList.toggle("low-health", scene.hp / scene.maxHp < 0.3);
   const bounce = moving ? Math.sin(scene.runTime * 17) : 0;
   scene.player.setScale(
-    (scene.mount ? 0.75 : 1) * (1 + Math.abs(bounce) * 0.035),
-    (scene.mount ? 0.75 : 1) * (1 - Math.abs(bounce) * 0.045),
+    BALANCE.player.visualScale * (scene.mount ? 0.75 : 1) * (1 + Math.abs(bounce) * 0.035),
+    BALANCE.player.visualScale * (scene.mount ? 0.75 : 1) * (1 - Math.abs(bounce) * 0.045),
   );
   const target = scene.enemies.reduce(
     (best, e) =>
@@ -471,8 +476,8 @@ export function updatePresentation(scene, moving) {
     );
     scene.gun.setRotation(a).setFlipY(Math.cos(a) < 0);
     scene.gun.setPosition(
-      scene.player.x + Math.cos(a) * 23,
-      scene.player.y + 9 + Math.sin(a) * 12,
+      scene.player.x + Math.cos(a) * 23 * scene.player.scaleX,
+      scene.player.y + (9 + Math.sin(a) * 12) * scene.player.scaleY,
     );
   }
 }

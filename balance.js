@@ -2,7 +2,7 @@
 export const BALANCE = {
   duration: 600,
   overtime: 30,
-  player: { hp: 100, speed: 210, invulnerability: 0.65, pickup: 100 },
+  player: { visualScale: 0.88, hp: 100, speed: 210, invulnerability: 0.65, pickup: 100 },
   bosses: [45, 105, 165, 225, 285, 345, 405, 465, 540],
   bossWarning: 8,
   enemyCap: 240,
