@@ -1680,7 +1680,7 @@ kbd {
   grid-template-columns: 34px 1fr; grid-template-rows: auto auto 1fr;
   align-content: start; align-items: center; border: 2px solid #322e23;
   border-radius: 8px; box-shadow: none; transform: none;
-  background: rgb(249 241 220 / 25%); color: #fff8dc;
+  background: rgb(249 241 220 / 30%); color: #fff8dc;
   text-shadow: 0 1px 2px #272723;
 }
 #game .upgrade-overlay .choice-icon { width: 34px; height: 34px; margin: 0; border: 0; background: none; color: #fff3ca; box-shadow: none; transform: none; }
