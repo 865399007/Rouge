@@ -1,7 +1,9 @@
 import { drawBattleHud, hudBrushes } from "./battle-hud.js";
 
 export function preloadHud(scene) {
-  for (const key of ["ui-roll","build-rapid-disabled","build-frost-disabled","build-blast-disabled"]) {
+  scene.load.image("ui-roll", "./assets/ui-roll.png");
+  for (const key of ["build-rapid", "build-frost", "build-blast"]) {
+    scene.load.image(key + "-disabled", "./assets/" + key + "-disabled.png");
     scene.load.image(key, "./assets/"+key+".png");
   }
 }
