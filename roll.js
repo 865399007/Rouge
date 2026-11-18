@@ -77,7 +77,7 @@ export class Roll {
         .setTint(0xffe4a0)
         .setAlpha(0.32)
         .setDepth(3);
-      this.scene.effect(ghost, 0.16);
+      this.scene.effect(ghost, 0.23, -this.direction.x*42, -this.direction.y*42);
     }
     this.sync();
     return true;

@@ -1,9 +1,9 @@
 export const mounts = [
-  { id: "walker", name: "四足巡猎机器人", range: 380, cooldown: 0.42, damage: 22, color: 0x7ce2d5 },
-  { id: "stag", name: "霜角鹿", range: 160, cooldown: 2.4, damage: 32, color: 0x8cdcff },
-  { id: "drake", name: "赤焰翼龙", range: 225, cooldown: 1.7, damage: 36, color: 0xff9863 },
-  { id: "lynx", name: "雷纹猞猁", range: 260, cooldown: 1.65, damage: 30, color: 0xf9cd58 },
-  { id: "boar", name: "铁棘战猪", range: 250, cooldown: 1.9, damage: 46, color: 0xd8ac81 },
+  { id: "walker", shield: 35, passiveIcon: "shield", passiveName: "护盾", name: "四足巡猎机器人", range: 380, cooldown: 0.42, damage: 22, color: 0x7ce2d5 },
+  { id: "stag", regen: 1.5, passiveIcon: "regen", passiveName: "回血", name: "霜角鹿", range: 160, cooldown: 2.4, damage: 32, color: 0x8cdcff },
+  { id: "drake", crit: 0.10, passiveIcon: "crit", passiveName: "暴击", name: "赤焰翼龙", range: 225, cooldown: 1.7, damage: 36, color: 0xff9863 },
+  { id: "lynx", speed: 0.20, passiveIcon: "speed", passiveName: "疾行", name: "雷纹猞猁", range: 260, cooldown: 1.65, damage: 30, color: 0xf9cd58 },
+  { id: "boar", armor: 12, passiveIcon: "armor", passiveName: "护甲", name: "铁棘战猪", range: 250, cooldown: 1.9, damage: 46, color: 0xd8ac81 },
 ];
 
 export function ride(scene, type) {
@@ -11,10 +11,11 @@ export function ride(scene, type) {
   scene.mount?.label.destroy();
   const { x, y } = scene.player;
   const sprite = scene.add.image(x, y + 20, "mount-" + type.id).setDepth(4.9);
-  const label = scene.add.text(x, y + 47, type.name + " · 60秒", {
+  const label = scene.add.text(x, y + 47, type.name + " · " + type.passiveName + " · 60秒", {
     fontSize: "12px", color: "#fff2cf", stroke: "#342d26", strokeThickness: 3,
   }).setOrigin(0.5, 0).setDepth(9);
-  scene.mount = { type, sprite, label, remaining: 60, cooldown: 0 };
+  scene.mount = { type, sprite, label, shield: type.shield || 0, remaining: 60, cooldown: 0 };
+  scene.sync();
 }
 
 export function updateMount(scene, dt) {
@@ -26,13 +27,14 @@ export function updateMount(scene, dt) {
     sprite.destroy();
     label.destroy();
     scene.mount = null;
+    scene.sync();
     return;
   }
   const p = scene.player;
   const input = scene.movementInput();
   if (input.x) sprite.setFlipX(input.x < 0);
   sprite.setPosition(p.x, p.y + 20 + (input.x || input.y ? Math.sin(scene.runTime * 18) * 2 : 0));
-  label.setPosition(p.x, p.y + 47).setText(type.name + " · " + Math.ceil(mount.remaining) + "秒");
+  label.setPosition(p.x, p.y + 47).setText(type.name + (type.shield && !mount.shield ? "" : " · " + type.passiveName) + " · " + Math.ceil(mount.remaining) + "秒");
   mount.cooldown -= dt;
   if (mount.cooldown > 0) return;
   const enemies = scene.enemies.filter(e => e.s.active);
@@ -54,15 +56,32 @@ export function updateMount(scene, dt) {
   };
   switch (type.id) {
     case "walker":
-      g.lineBetween(p.x, p.y + 15, target.s.x, target.s.y);
+      g.lineStyle(7, type.color, 0.4).lineBetween(p.x, p.y + 15, target.s.x, target.s.y)
+        .lineStyle(2, 0xe9ffff).lineBetween(p.x, p.y + 15, target.s.x, target.s.y)
+        .strokeCircle(target.s.x, target.s.y, 9);
+      scene.burst(target.s.x, target.s.y, type.color, 4, 95);
       hit(target, "physical");
       break;
     case "stag":
-      g.strokeCircle(p.x, p.y, type.range);
+      g.lineStyle(2, type.color, 0.7).strokeCircle(p.x, p.y, type.range);
+      const wave = scene.add.graphics({ x: p.x, y: p.y }).setDepth(7);
+      wave.lineStyle(3, 0xd8ffff).strokeCircle(0, 0, type.range * 0.62);
+      for (let i = 0; i < 12; i++) {
+        const a = i * Math.PI / 6, x = Math.cos(a), y = Math.sin(a), r = type.range * 0.62;
+        wave.fillStyle(type.color).fillTriangle(x*r-y*4, y*r+x*4, x*(r+13), y*(r+13), x*r+y*4, y*r-x*4);
+      }
+      scene.effect(wave, 0.35, 0, 0, 1.6);
       for (const e of enemies) if (scene.distance(p, e.s) <= type.range) hit(e, "ice");
       break;
     case "drake":
-      g.fillStyle(type.color, 0.32).slice(p.x, p.y, type.range, angle - 0.58, angle + 0.58).fillPath();
+      for (let i = -3; i <= 3; i++) {
+        const a = angle + i * 0.15;
+        const flame = scene.add.graphics({ x: p.x, y: p.y + 6 }).setDepth(7).setRotation(a);
+        const length = type.range * (1 - Math.abs(i) * 0.09);
+        flame.fillStyle(0xfb733b, 0.75).fillTriangle(8, 0, length * 0.64, -14, length, 0)
+          .fillStyle(0xffc853, 0.9).fillTriangle(5, 0, length * 0.49, 11, length * 0.82, 0);
+        scene.effect(flame, 0.28, Math.cos(a)*70, Math.sin(a)*70);
+      }
       for (const e of enemies) {
         const delta = Math.atan2(e.s.y - p.y, e.s.x - p.x) - angle;
         if (scene.distance(p, e.s) <= type.range && Math.cos(delta) >= Math.cos(0.58)) hit(e, "fire");
@@ -73,7 +92,15 @@ export function updateMount(scene, dt) {
       let from = p, next = target;
       while (next && visited.size < 3 && scene.mode === "play") {
         const point = { x: next.s.x, y: next.s.y };
-        g.lineBetween(from.x, from.y, point.x, point.y);
+        const dx = point.x - from.x, dy = point.y - from.y;
+        const len = Math.max(1, Math.hypot(dx, dy));
+        const bolt = [from, ...[1, 2, 3].map(i => {
+          const offset = (i % 2 ? 1 : -1) * Math.min(11, len / 5);
+          return { x: from.x + dx*i/4 - dy*offset/len, y: from.y + dy*i/4 + dx*offset/len };
+        }), point];
+        g.lineStyle(7, 0x9454cb, 0.75).strokePoints(bolt)
+          .lineStyle(2.5, 0xffe782).strokePoints(bolt);
+        scene.burst(point.x, point.y, type.color, 3, 70);
         visited.add(next);
         hit(next, "lightning", 0.85 ** (visited.size - 1));
         from = point;
@@ -83,7 +110,16 @@ export function updateMount(scene, dt) {
     }
     case "boar": {
       const dx = Math.cos(angle), dy = Math.sin(angle);
-      g.lineStyle(11, type.color, 0.65).lineBetween(p.x, p.y, p.x + type.range * dx, p.y + type.range * dy);
+      for (let i = 1; i <= 5; i++) {
+        const x = p.x + dx * i * type.range / 5, y = p.y + dy * i * type.range / 5;
+        const tusk = scene.add.graphics({ x, y }).setDepth(7).setRotation(angle);
+        for (const side of [-1, 1]) {
+          tusk.fillStyle(0x845646).fillTriangle(-16, side*16, 10, side*5, -5, side*17)
+            .fillStyle(0xffe4a4).fillTriangle(-13, side*15, 10, side*5, -4, side*13);
+        }
+        scene.effect(tusk, 0.26, dx*70, dy*70);
+      }
+      scene.burst(p.x + dx*type.range, p.y + dy*type.range, 0xc5a17a, 9, 135);
       for (const e of enemies) {
         const x = e.s.x - p.x, y = e.s.y - p.y, along = x * dx + y * dy;
         if (along >= 0 && along <= type.range && Math.abs(x * dy - y * dx) <= 15 + e.r) hit(e, "physical");

@@ -432,7 +432,19 @@ export class Defenses {
         .setDepth(7)
         .lineStyle(3, type.color)
         .lineBetween(muzzleX, muzzleY, impact.x, impact.y);
-      scene.effect(shot, 0.14);
+      shot.lineStyle(1.5, 0xfff4d3).lineBetween(muzzleX, muzzleY, impact.x, impact.y);
+      if (type.element === "ice") {
+        for (let i=1; i<=4; i++) {
+          const px = muzzleX + (impact.x-muzzleX)*i/5, py = muzzleY + (impact.y-muzzleY)*i/5;
+          shot.fillStyle(type.color).fillTriangle(px-4,py,px,py-8,px+4,py).fillTriangle(px-4,py,px,py+5,px+4,py);
+        }
+      } else if (type.element === "fire") {
+        shot.lineStyle(4,type.color,0.8).strokeCircle(impact.x,impact.y,45)
+          .lineStyle(2,0xffdc87).strokeCircle(impact.x,impact.y,66);
+      } else {
+        shot.lineStyle(2,type.color).strokeCircle(impact.x,impact.y,9);
+      }
+      scene.effect(shot, 0.19);
       scene.tweens.add({
         targets: tower.barrel,
         scaleX: 0.82,

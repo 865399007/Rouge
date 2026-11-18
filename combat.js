@@ -59,7 +59,13 @@ export class Combat {
   }
   receive(amount) {
     const s = this.s;
-    const damage = (amount * 100) / (100 + s.build.armor);
+    const armor = s.build.armor + (s.mount?.type.armor || 0);
+    let damage = (amount * 100) / (100 + armor);
+    if (s.mount?.shield > 0) {
+      const absorbed = Math.min(s.mount.shield, damage);
+      s.mount.shield -= absorbed;
+      damage -= absorbed;
+    }
     s.hp = Math.max(0, s.hp - damage);
     s.impact(s.player.x, s.player.y, 0xef796a, false, false);
     s.cameras.main.shake(80, 0.002);
@@ -245,7 +251,11 @@ export class Combat {
       const g = s.add.graphics().setDepth(8),
         x = s.player.x + Math.cos(angle) * radius,
         y = s.player.y + Math.sin(angle) * radius;
-      g.lineStyle(9, color, 0.5)
+      for (let offset of [-6, 6]) {
+        const ox = -Math.sin(angle)*offset, oy = Math.cos(angle)*offset;
+        g.lineStyle(2, color, 0.8).lineBetween(s.player.x+ox,s.player.y+oy,x+ox,y+oy);
+      }
+      g.lineStyle(15, color, 0.24)
         .lineBetween(s.player.x, s.player.y, x, y)
         .lineStyle(3, 0xfff4d1)
         .lineBetween(s.player.x, s.player.y, x, y);
@@ -309,6 +319,12 @@ export class Combat {
         .fillCircle(x, y, zone.r)
         .lineStyle(2, zone.color, 0.7)
         .strokeCircle(x, y, zone.r);
+      for (let i = 0; i < 4; i++) {
+        const phase = this.time * (zone.kind === "pull" ? 3 : -2) + i * Math.PI / 2;
+        const r = zone.r * (0.45 + 0.45 * ((this.time + i / 4) % 1));
+        g.lineStyle(3, zone.color, 0.65).beginPath().arc(x, y, r, phase, phase + 1.25).strokePath();
+        g.fillStyle(0xffefd6, 0.85).fillCircle(x + r*Math.cos(phase), y + r*Math.sin(phase), 2);
+      }
       zone.tick -= dt;
       if (zone.tick > 0) return true;
       zone.tick = 0.5;

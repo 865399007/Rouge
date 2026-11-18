@@ -161,7 +161,9 @@ export function updateClassWeapon(scene, dt) {
       const beam = scene.add
         .graphics()
         .setDepth(7)
-        .lineStyle(2, job.color)
+        .lineStyle(7, job.color, 0.45)
+        .lineBetween(t.x, t.y, target.s.x, target.s.y)
+        .lineStyle(2, 0xfff2c8)
         .lineBetween(t.x, t.y, target.s.x, target.s.y);
       scene.effect(beam, 0.12);
       scene.combat.damage(target, job.damage * scene.build.power, "physical");
@@ -182,6 +184,10 @@ export function updateClassWeapon(scene, dt) {
     const g = scene.add
       .graphics({ x: scene.player.x, y: scene.player.y })
       .setDepth(8);
+    for (let i=0; i<3; i++) {
+      g.lineStyle(3+i, job.color, 0.7).beginPath()
+        .arc(0,0,job.range*(0.58+i*0.12),angle-1.3+i*0.12,angle+0.65+i*0.2).strokePath();
+    }
     g.lineStyle(16, job.color, 0.6)
       .beginPath()
       .arc(0, 0, job.range, angle - 1.2, angle + 1.2)

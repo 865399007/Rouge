@@ -45,6 +45,66 @@ const paths = {
   mine: '<path d="m12 3 9 17H3Z"/><path d="M12 9v4m0 3v1"/>',
   heal_supply: '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z"/>',
 };
+const buffPaths = {
+  shield: '<path d="m12 2 9 4v6q0 6-9 10-9-4-9-10V6Zm-4 10h8m-4-4v8"/>',
+  power: '<path d="M5 19 18 6l1 5M5 19l5-1M4 13l7-7"/>',
+  haste: '<path d="m3 6 6 6-6 6m9-12 6 6-6 6"/>',
+  vitality: '<path d="M12 20 4 12C-1 4 8 1 12 7c4-6 13-3 8 5Z"/>',
+  armor: '<path d="m12 2 8 3v7q0 5-8 10-8-5-8-10V5Z"/>',
+  speed: '<path d="m13 4-2 9 5 2h4v4H7v-5l2-10M2 8h4m-5 4h4"/>',
+  magnet: '<path d="M4 4v9a8 8 0 0 0 16 0V4h-5v9a3 3 0 0 1-6 0V4ZM4 8h5m6 0h5"/>',
+  regen: '<path d="M9 4h6v5h5v6h-5v5H9v-5H4V9h5Z"/>',
+  crit: '<circle cx="12" cy="12" r="7"/><path d="M12 1v5m0 12v5M1 12h5m12 0h5"/><circle cx="12" cy="12" r="2"/>',
+  invincible: '<path d="m12 2 8 3v7q0 5-8 10-8-5-8-10V5Zm-4 9 3 3 5-6"/>',
+  orbit: paths.orbit,
+  siphon: paths.siphon,
+};
+
+export function preloadBuffIcons(scene) {
+  for (const [id, path] of Object.entries(buffPaths)) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff3ca" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+    scene.load.svg("buff-" + id, "data:image/svg+xml;base64," + btoa(svg));
+  }
+}
+
+export function updateBuffIcons(scene) {
+  const effects = Object.entries(scene.build.attributes)
+    .filter(([, level]) => level > 0)
+    .map(([id, level]) => ({ key: "buff-" + id, level, color: 0x435b48 }));
+  for (const skill of scene.build.active) {
+    if (skill.type === "orbit" || (skill.type === "drain" && scene.combat.zones.some(z => z.owner === skill.id))) {
+      effects.push({ key: "buff-" + skill.id, level: skill.level, color: 0x635075 });
+    }
+  }
+  if (scene.mount) {
+    const { type, shield } = scene.mount;
+    effects.push({ key: "mount-" + type.id, color: 0x665338 });
+    if (!type.shield || shield > 0) effects.push({
+      key: "buff-" + type.passiveIcon, level: type.shield ? Math.ceil(shield) : 0, color: 0x745634,
+    });
+  }
+  if (scene.invincible > 0) effects.push({ key: "buff-invincible", color: 0x3d6374 });
+  const row = scene.buffIcons;
+  const signature = effects.map(e => e.key + (e.level || "")).join("|");
+  if (row.signature !== signature) {
+    row.signature = signature;
+    row.removeAll(true);
+    effects.forEach(({ key, level, color }, i) => {
+      const column = i % 6;
+      const count = Math.min(6, effects.length - (i - column));
+      const x = (column - (count - 1) / 2) * 24;
+      const y = -Math.floor(i / 6) * 24;
+      row.add(scene.add.rectangle(x, y, 21, 21, color).setStrokeStyle(1.5, 0x302c24));
+      const icon = scene.add.image(x, y, key);
+      icon.setScale(Math.min(18 / icon.width, 18 / icon.height));
+      row.add(icon);
+      if (level > 1) row.add(scene.add.text(x + 10, y + 11, String(level), {
+        fontFamily: "Arial", fontStyle: "bold", fontSize: "10px", stroke: "#292721", strokeThickness: 3,
+      }).setOrigin(1));
+    });
+  }
+  row.setPosition(scene.player.x, scene.player.y - scene.player.displayHeight / 2 - 14);
+}
 export function icon(id) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[id] || paths.rail}</svg>`;
 }
@@ -222,7 +282,15 @@ export function drawGround(scene, x, y, random) {
 
 export function combatFeedback(scene, x, y, color, critical, lethal) {
   const g = scene.add.graphics({ x, y }).setDepth(8);
-  const r = lethal ? 22 : 12;
+  const r = lethal ? 30 : critical ? 24 : 14;
+  g.fillStyle(color, 0.18).fillCircle(0, 0, r * 0.85);
+  for (let i = 0; i < (critical || lethal ? 8 : 4); i++) {
+    const a = scene.runTime * 2 + i * Math.PI / (critical || lethal ? 4 : 2);
+    const dx = Math.cos(a), dy = Math.sin(a);
+    const length = r * (i % 2 ? 0.8 : 1.35);
+    g.fillStyle(i % 2 ? color : 0xffe6a6, 0.92)
+      .fillTriangle(dx*4-dy*3, dy*4+dx*3, dx*length, dy*length, dx*4+dy*3, dy*4-dx*3);
+  }
   g.lineStyle(lethal ? 4 : 3, color, 1);
   for (let i = 0; i < 6; i++) {
     const a = (i * Math.PI) / 3 + 0.2;
@@ -254,6 +322,10 @@ export function drawOrbit(g, x, y, color, angle) {
     x,
     y,
   );
+  for (let i = 1; i <= 3; i++) {
+    const tx = x + Math.sin(angle) * i * 7, ty = y - Math.cos(angle) * i * 7;
+    g.fillStyle(color, 0.32 / i).fillTriangle(tx, ty-9, tx+5, ty, tx, ty+9);
+  }
   g.fillStyle(color)
     .fillPoints(points, true)
     .lineStyle(2, 0x504d39)
@@ -274,6 +346,11 @@ export function drawArc(g, from, to, color) {
     });
   }
   points.push({ x: to.x, y: to.y });
+  for (const i of [2, 4]) {
+    const node = points[i], sign = i === 2 ? 1 : -1;
+    g.lineStyle(2, color, 0.9).lineBetween(node.x, node.y,
+      node.x + dx * 0.12 - sign * dy / d * 17, node.y + dy * 0.12 + sign * dx / d * 17);
+  }
   g.lineStyle(7, color, 0.4).strokePoints(points, false);
   g.lineStyle(3, color).strokePoints(points, false);
   g.lineStyle(1, 0xfff5d4).strokePoints(points, false);

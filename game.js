@@ -17,6 +17,8 @@ import {
   drawGround,
   combatFeedback,
   updatePresentation,
+  preloadBuffIcons,
+  updateBuffIcons,
   drawOrbit,
   drawArc,
 } from "./presentation.js";
@@ -513,6 +515,7 @@ class ge extends Lt.Scene {
     super("garden");
   }
   preload() {
+    preloadBuffIcons(this);
     for (const key of artKeys) this.load.svg(key, `./assets/${key}.svg`);
   }
   create() {
@@ -546,6 +549,7 @@ class ge extends Lt.Scene {
       (this.combat = new ce(this, (name) => pt.play(name))),
       (this.runTime = 0),
       (this.mount = null),
+      (this.buffIcons = this.add.container().setDepth(11)),
       (this.accumulator = 0),
       (this.bossTimes = [...BALANCE.bosses]),
       (this.nodes = new Set()),
@@ -643,6 +647,9 @@ class ge extends Lt.Scene {
       ]));
   }
   drawTextures() {}
+  get movementSpeed() {
+    return Math.round(this.speed * (1 + (this.mount?.type.speed || 0)));
+  }
   sync() {
     if (this.build) {
       renderLoadout(yt("skills"), this.build.active);
@@ -650,7 +657,7 @@ class ge extends Lt.Scene {
         health: `${Math.ceil(this.hp)} / ${this.maxHp}`,
         level: this.level,
         damage: `${Math.round((this.build.power - 1) * 100)}%`,
-        speed: this.speed,
+        speed: this.movementSpeed,
         kills: this.kills,
         "xp-label": `${Math.floor(this.xp)} / ${this.need}`,
         wave:
@@ -844,7 +851,7 @@ class ge extends Lt.Scene {
   }
   hit(enemy, amount, color = 0xdad0af, meta = {}) {
     if (!enemy.s.active || amount <= 0) return 0;
-    const crit = !meta.dot && this.build.random() < this.build.critChance;
+    const crit = !meta.dot && this.build.random() < this.build.critChance + (this.mount?.type.crit || 0);
     const actual = Math.min(enemy.hp, amount * (crit ? 1.5 : 1));
     enemy.hp = Math.max(0, enemy.hp - actual);
     this.damageNumbers.add(enemy, actual, { ...meta, crit });
@@ -1225,7 +1232,7 @@ class ge extends Lt.Scene {
       (this.regenClock += K),
       this.regenClock >= 1 &&
         ((this.regenClock = 0),
-        (this.hp = Math.min(this.maxHp, this.hp + this.build.regen)),
+        (this.hp = Math.min(this.maxHp, this.hp + this.build.regen + (this.mount?.type.regen || 0))),
         this.sync()),
       (this.runTime += K),
       (this.elapsed = this.runTime),
@@ -1268,8 +1275,8 @@ class ge extends Lt.Scene {
       if (S)
         this.defenses.move(
           this.player,
-          (input.x / S) * this.speed * K,
-          (input.y / S) * this.speed * K,
+          (input.x / S) * this.movementSpeed * K,
+          (input.y / S) * this.movementSpeed * K,
           25,
         );
       this.player.rotation = S ? Math.sin(b * 0.018) * 0.08 : 0;
@@ -1426,11 +1433,18 @@ class ge extends Lt.Scene {
         l.trail <= 0)
       ) {
         l.trail = 0.045;
-        const c = this.add
-          .ellipse(l.s.x, l.s.y, l.s.scaleX > 2 ? 20 : 8, 3, l.color, 0.45)
-          .setRotation(l.s.rotation)
-          .setDepth(6);
-        this.effect(c, 0.16);
+        const trail = this.add.graphics({x: l.s.x, y: l.s.y}).setDepth(6)
+          .setRotation(Math.atan2(l.vy, l.vx));
+        if (l.returning) {
+          trail.lineStyle(3, l.color, 0.9).beginPath().arc(0,0,15,0.5,4.8).strokePath();
+        } else if (l.explosive || l.element === "poison") {
+          trail.fillStyle(l.color, 0.5).fillCircle(-6,0,8).fillCircle(-15,-3,5)
+            .fillStyle(0xfff1bb, 0.8).fillCircle(-2,0,3);
+        } else {
+          trail.fillStyle(l.color, 0.8).fillTriangle(0,-3,-30,0,0,3)
+            .lineStyle(1,0xffedbb).lineBetween(-18,0,0,0);
+        }
+        this.effect(trail, 0.22);
       }
       for (const c of [...this.enemies])
         if (
@@ -1505,6 +1519,7 @@ class ge extends Lt.Scene {
           break;
         }
       }
+    updateBuffIcons(this);
   }
 }
 const Ct = new Lt.Game({
