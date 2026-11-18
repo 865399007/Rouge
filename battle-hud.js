@@ -15,6 +15,23 @@ export function drawBattleHud({s,w,h,ids,screen,capRect,toggleNode,padNode,setti
     const toggle=toggleNode;
     toggle.onclick=()=>{onToggle();};
     hit(toggle,gx-37,gy-37,74,74);hit(ids.pause,px-37,gy-37,74,74);
+    if (!settingsOpen && s.defenses) {
+      const size = 96, x = px - size + 26, y = gy + 44, inset = 6;
+      const map = add(s.add.graphics());
+      map.fillStyle(0x182326,.76).fillRoundedRect(x,y,size,size,8)
+        .lineStyle(2,cream,.65).strokeRoundedRect(x,y,size,size,8);
+      const project = (value, extent) => inset + (size - 2*inset) *
+        Math.max(0, Math.min(1, value / extent));
+      for (const enemy of s.enemies) {
+        if (enemy.hp <= 0) continue;
+        map.fillStyle(0xff846d).fillCircle(x + project(enemy.s.x,s.defenses.width),
+          y + project(enemy.s.y,s.defenses.height),enemy.boss ? 4 : 2.2);
+      }
+      const playerX = x + project(s.player.x,s.defenses.width);
+      const playerY = y + project(s.player.y,s.defenses.height);
+      map.fillStyle(0x85ffe1).fillCircle(playerX,playerY,4)
+        .lineStyle(1.5,0xffffff).strokeCircle(playerX,playerY,4);
+    }
     let slider=null;
     if(settingsOpen){
       const mx=px-204,my=gy+40;
