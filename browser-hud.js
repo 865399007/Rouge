@@ -24,7 +24,16 @@ export function attachBrowserHud(game) {
         proxy.type="range";
         proxy.oninput=()=>{node.value=proxy.value;node.dispatchEvent(new Event("input"));last=0;};
       }else{
-        proxy.onclick=()=>{if(!node.disabled){node.click();last=0;}};
+        const combatAction=node.id==="roll" || node.parentElement?.id==="tower-tools";
+        const activate=()=>{if(!node.disabled){node.click();last=0;}};
+        if(combatAction){
+          proxy.onpointerdown=event=>{
+            if(event.button!==0)return;
+            event.preventDefault();
+            activate();
+          };
+        }
+        proxy.onclick=event=>{if(!combatAction || event.detail===0)activate();};
       }
       if(node.parentElement?.id==="tower-tools"){
         const image=node.querySelector("img").cloneNode(false);

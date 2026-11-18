@@ -140,6 +140,7 @@ const Vt = document.createElement("div");
 Vt.className = "orientation-hint";
 Vt.textContent = "按住战场任意位置拖动即可移动";
 Zt.append(Vt);
+const battleMusicGain = 0.5;
 class ee {
   constructor() {
     ((this.volume = 0.35),
@@ -192,7 +193,7 @@ class ee {
       ((this.active = b),
       this.ambientGain &&
         this.ambientGain.gain.setTargetAtTime(
-          b ? 1 : 0,
+          b ? battleMusicGain : 0,
           this.ctx.currentTime,
           0.15,
         ));
@@ -200,7 +201,7 @@ class ee {
   ambience() {
     const b = this.ctx;
     ((this.ambientGain = b.createGain()),
-      (this.ambientGain.gain.value = this.active ? 1 : 0),
+      (this.ambientGain.gain.value = this.active ? battleMusicGain : 0),
       this.ambientGain.connect(this.master));
     // Sustained low strings and a legato horn line over a steady marching pulse.
     const rate = 24000, beat = 60 / 120;
