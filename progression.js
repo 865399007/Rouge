@@ -55,7 +55,9 @@ export class Build {
     };
   }
   get power() {
-    return (1 + 0.04 * (this.heroLevel - 1)) * (1 + 0.08 * (this.attributes.power || 0));
+    const level = this.heroLevel;
+    const growth = 1 + .04 * (level - 1) + .14 * Math.max(0, level - 5) + .20 * Math.max(0, level - 12);
+    return growth * (1 + 0.08 * (this.attributes.power || 0));
   }
   weaponDamage(base, level = this.attributes.weaponMastery || 0) {
     return base * this.power * (1 + level * weaponMasteryStep);

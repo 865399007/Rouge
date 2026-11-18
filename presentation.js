@@ -273,6 +273,29 @@ export function drawGround(scene, x, y, random) {
   return view;
 }
 
+// Each pass has a separate lifetime and motion, so the silhouette changes after impact.
+export function energyBurst(scene, x, y, color, radius, count, inward = false) {
+  const layer = depth => scene.add.graphics({x, y}).setDepth(depth);
+  const core = layer(7), rays = layer(7), echo = layer(6);
+  const phase = scene.runTime * 2;
+  for (let i = 0; i < count; i++) {
+    const angle = phase + i * Math.PI * 2 / count;
+    const dx = Math.cos(angle), dy = Math.sin(angle);
+    const tip = radius * (i % 2 ? .7 : 1);
+    core.fillStyle(color,.32).fillTriangle(-dy*5,dx*5,dx*tip,dy*tip,dy*5,-dx*5);
+    core.fillStyle(0xfff6da,.96).fillTriangle(-dy*2,dx*2,dx*tip*.75,dy*tip*.75,dy*2,-dx*2);
+    const start = tip*.68;
+    rays.lineStyle(3,color,.88).lineBetween(dx*start,dy*start,dx*tip,dy*tip)
+      .fillStyle(0xfff6df).fillCircle(dx*tip,dy*tip,1.8);
+    if (i%2 === 0) echo.lineStyle(3,color,.9).beginPath()
+      .arc(0,0,radius*.77,angle,angle+Math.PI*2/count).strokePath();
+  }
+  echo.lineStyle(1,0xfff4dc,.9).strokeCircle(0,0,radius*.66);
+  scene.effect(core,.16,0,0,.34);
+  scene.effect(rays,.34,0,0,inward ? -.78 : .92,inward ? -1.4 : .48,.045);
+  scene.effect(echo,.46,0,0,inward ? -.65 : .88,inward ? 1.8 : -.85,.12);
+}
+
 export function combatFeedback(scene, x, y, color, critical, lethal) {
   const g = scene.add.graphics({ x, y }).setDepth(8);
   const r = lethal ? 30 : critical ? 24 : 14;
@@ -318,6 +341,15 @@ export function drawOrbit(g, x, y, color, angle, level = 1) {
   for (let i = 1; i <= level + 1; i++) {
     const tx = x + Math.sin(angle) * i * 7, ty = y - Math.cos(angle) * i * 7;
     g.fillStyle(color, 0.32 / i).fillTriangle(tx, ty-9, tx+5, ty, tx, ty+9);
+  }
+  if (level >= 4) {
+    for (let i=1; i<=3; i++) {
+      const length = i * (level === 5 ? 15 : 10);
+      const tx = x + Math.sin(angle)*length, ty = y - Math.cos(angle)*length;
+      g.lineStyle(4-i,color,.8-i*.13).beginPath()
+        .arc(tx,ty,4+i,angle+.5,angle+3.8).strokePath()
+        .fillStyle(0xfff6da,.9).fillCircle(tx,ty,2);
+    }
   }
   if (level >= 3) {
     const span = level * 2;

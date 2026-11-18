@@ -1,5 +1,5 @@
 import { SKILL_TUNING } from "./balance.js";
-import { icon } from "./presentation.js";
+import { energyBurst, icon } from "./presentation.js";
 // Each equipped skill uses the same slots and upgrade rules.
 export const skills = [
   [
@@ -141,6 +141,25 @@ export function castArt(scene, skill, target, radius, color) {
     ? scene.player
     : target.s;
   g.setPosition(center.x, center.y);
+  const inward = skill.type === "pull" || skill.type === "drain";
+  energyBurst(scene, center.x, center.y, color, Math.min(84, 22 + level*7 + radius*.12),
+    4 + level*2, inward);
+  if (level >= 4) {
+    const halo = scene.add.graphics({x:center.x, y:center.y}).setDepth(6);
+    const ring = Math.min(68, Math.max(28, radius * .46));
+    const segments = level === 5 ? 8 : 5;
+    for (let i = 0; i < segments; i++) {
+      const a = i * Math.PI * 2 / segments;
+      halo.lineStyle(4,color,.74).beginPath().arc(0,0,ring,a,a+2.8/segments).strokePath();
+      if (level === 5) {
+        const dx = Math.cos(a), dy = Math.sin(a);
+        halo.lineStyle(2,0xffefbf,.94).beginPath().arc(0,0,ring*.83,a+.2,a+.55).strokePath()
+          .fillStyle(color,.95).fillTriangle(dx*ring-3*dy,dy*ring+3*dx,
+            dx*(ring+12),dy*(ring+12),dx*ring+3*dy,dy*ring-3*dx);
+      }
+    }
+    scene.effect(halo,.38,0,0,.46,-1.7);
+  }
   g.lineStyle(3, color, 0.9);
   switch (skill.type) {
     case "area":

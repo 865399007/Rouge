@@ -19,6 +19,7 @@ import {
   renderPanel,
   drawGround,
   combatFeedback,
+  energyBurst,
   updatePresentation,
   preloadBuffIcons,
   updateBuffIcons,
@@ -551,6 +552,7 @@ class ge extends Lt.Scene {
       (this.traits = { crit: 0, armor: 0, magnet: 0, regen: 0 }),
       (this.regenClock = 0),
       (this.effects = []),
+      (this.nextFinisherArt = 0),
       (this.recoil = 0),
       (this.skills = { aura: 0, chain: 0, orbit: 0 }),
       (this.skillTime = 0),
@@ -709,10 +711,12 @@ class ge extends Lt.Scene {
     this.closePanel();
     this.sync();
   }
-  effect(b, Y, K = 0, Q = 0, Z = 0, p = 0) {
+  effect(b, Y, K = 0, Q = 0, Z = 0, p = 0, delay = 0) {
+    if (delay > 0) b.setVisible(false);
     (this.effects.length >= 220 && this.effects.shift().sprite.destroy(),
       this.effects.push({
         sprite: b,
+        delay,
         life: Y,
         total: Y,
         vx: K,
@@ -765,6 +769,11 @@ class ge extends Lt.Scene {
   updateEffects(b) {
     for (let Y = this.effects.length - 1; Y >= 0; Y--) {
       const K = this.effects[Y];
+      if (K.delay > 0) {
+        K.delay -= b;
+        if (K.delay > 0) continue;
+        K.sprite.setVisible(true);
+      }
       if (((K.life -= b), K.life <= 0)) {
         (K.sprite.destroy(), this.effects.splice(Y, 1));
         continue;
@@ -837,6 +846,22 @@ class ge extends Lt.Scene {
       }
       this.hitStop(crit || enemy.hp <= 0 ? 110 : 80);
       this.impact(enemy.s.x, enemy.s.y, color, crit, enemy.hp <= 0);
+      if (this.level >= 6 && (crit || enemy.hp <= 0) &&
+          this.runTime >= (this.nextFinisherArt ?? 0)) {
+        this.nextFinisherArt = this.runTime + .14;
+        energyBurst(this, enemy.s.x, enemy.s.y, color, this.level >= 13 ? 46 : 31, this.level >= 13 ? 12 : 8);
+        const shards = this.add.graphics({ x: enemy.s.x, y: enemy.s.y }).setDepth(7);
+        const count = this.level >= 13 ? 8 : 4;
+        for (let i = 0; i < count; i++) {
+          const angle = this.runTime + i * Math.PI * 2 / count;
+          const dx = Math.cos(angle), dy = Math.sin(angle);
+          const tip = i % 2 ? 23 : 36;
+          shards.fillStyle(i % 2 ? 0xfff2be : color, .92)
+            .fillTriangle(12*dx-3*dy, 12*dy+3*dx, tip*dx, tip*dy, 12*dx+3*dy, 12*dy-3*dx);
+          if (count === 8) shards.lineStyle(2,color,.8).beginPath().arc(0,0,28,angle,angle+.48).strokePath();
+        }
+        this.effect(shards, .32, 0, 0, .95, 1.4);
+      }
       this.flashEnemy(enemy);
     }
     if (enemy.hp <= 0) {
@@ -1185,6 +1210,27 @@ class ge extends Lt.Scene {
       .setTint(stat.final ? 0xe7bbad : 0xd6c293);
     this.enemies.push({ ...stat, s: sprite });
   }
+  beginDefeat() {
+    if (this.mode !== "play") return;
+    this.mode = "dying";
+    this.deathElapsed = 0;
+    this.deathStartAngle = this.player.rotation;
+    energyBurst(this, this.player.x, this.player.y, 0xf05241, 43, 10);
+    this.gun.setVisible(false);
+    pt.setActive(false);
+  }
+  updateDefeat(delta) {
+    this.deathElapsed += Math.min(delta, 50) / 1000;
+    this.updateEffects(Math.min(delta, 50) / 1000);
+    if (this.deathElapsed < .18) return;
+    if (this.healthyTexture) {
+      this.player.setTexture(this.healthyTexture);
+      this.healthyTexture = null;
+    }
+    const progress = Math.min(1, (this.deathElapsed - .18) / .32);
+    this.player.setRotation(this.deathStartAngle + progress * progress * 1.35);
+    if (this.deathElapsed >= .62) this.finish(false);
+  }
   finish(b) {
     (pt.play(b ? "win" : "lose"),
       (this.mode = "end"),
@@ -1202,6 +1248,7 @@ class ge extends Lt.Scene {
   }
   update(b, Y) {
     if (performance.now() < this.hitStopUntil) return;
+    if (this.mode === "dying") return this.updateDefeat(Y);
     if ((pt.setActive(this.mode === "play"), this.mode === "play"))
       for (
         this.accumulator += Math.min(Y, 100) / 1e3;
@@ -1427,7 +1474,7 @@ class ge extends Lt.Scene {
         this.sync(),
         this.hp <= 0)
       ) {
-        this.finish(!1);
+        this.beginDefeat();
         return;
       }
     }
@@ -1516,7 +1563,7 @@ class ge extends Lt.Scene {
         this.combat.receive(l.damage ?? 10);
         this.invincible = BALANCE.player.invulnerability;
         l.life = 0;
-        if (this.hp <= 0) this.finish(!1);
+        if (this.hp <= 0) this.beginDefeat();
       }
       if (l.life <= 0) {
         l.s.destroy();
