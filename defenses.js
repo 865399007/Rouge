@@ -3,6 +3,7 @@ const types = [
   {name:"冰晶塔", icon:"❄", cost:5, color:0x94e4ff, range:220, cooldown:2.1, damage:15},
   {name:"爆裂塔", icon:"✹", cost:7, color:0xff9468, range:240, cooldown:2.8, damage:36}
 ];
+const halfTower = 32;
 const reach = 200;
 const clamp = (n,min,max) => Math.max(min,Math.min(max,n));
 
@@ -29,7 +30,12 @@ export class Defenses {
     this.tools.append(this.counter);
     this.buttons=types.map(type=>{
       const button=document.createElement("button");
-      button.textContent=type.icon+" "+type.name+" · "+type.cost;
+      const emblem=document.createElement("strong");
+      emblem.textContent=type.icon;
+      emblem.style.color="#"+type.color.toString(16);
+      const label=document.createElement("span");
+      label.textContent=type.name+" · "+type.cost;
+      button.append(emblem,label);
       button.title="拖到角色附近建造，消耗 "+type.cost+" 材料";
       this.tools.append(button);
       button.onpointerdown=event=>{
@@ -74,15 +80,37 @@ export class Defenses {
     const {x,y,type}=this.drag;
     return document.elementFromPoint(x,y)===this.scene.game.canvas &&
       this.stock>=type.cost && this.scene.distance(point,this.scene.player)<=reach &&
-      point.x>=20 && point.y>=20 && point.x<=this.width-20 && point.y<=this.height-20 &&
-      this.towers.every(tower=>this.scene.distance(tower,point)>=40);
+      point.x>=halfTower && point.y>=halfTower &&
+      point.x<=this.width-halfTower && point.y<=this.height-halfTower &&
+      !this.overlaps(point,this.scene.player,25) &&
+      this.scene.enemies.every(enemy=>!this.overlaps(point,enemy.s,enemy.r)) &&
+      this.towers.every(tower=>!this.overlaps(tower,point,halfTower+4));
+  }
+  overlaps(tower, actor, radius){
+    return Math.abs(tower.x-actor.x)<halfTower+radius &&
+           Math.abs(tower.y-actor.y)<halfTower+radius;
+  }
+  move(actor,dx,dy,radius){
+    // Resolve each axis independently so diagonal motion slides along walls.
+    for(const [axis,delta,limit] of [["x",dx,this.width],["y",dy,this.height]]){
+      if(!delta)continue;
+      const other=axis==="x"?"y":"x";
+      let next=clamp(actor[axis]+delta,radius,limit-radius);
+      for(const tower of this.towers){
+        const gap=halfTower+radius;
+        if(Math.abs(actor[other]-tower[other])>=gap)continue;
+        if(delta>0 && actor[axis]<=tower[axis]-gap)next=Math.min(next,tower[axis]-gap);
+        if(delta<0 && actor[axis]>=tower[axis]+gap)next=Math.max(next,tower[axis]+gap);
+      }
+      actor[axis]=next;
+    }
   }
   drawPreview(){
     if(!this.drag)return;
     const point=this.location(), player=this.scene.player;
     const color=this.valid(point)?0x90f4aa:0xff7777;
     this.preview.clear().lineStyle(2,0xd7efdc,.8).strokeCircle(player.x,player.y,reach)
-      .fillStyle(color,.6).fillCircle(point.x,point.y,16);
+      .fillStyle(color,.6).fillRect(point.x-halfTower,point.y-halfTower,2*halfTower,2*halfTower);
   }
   confine(sprite,padding){
     sprite.x=clamp(sprite.x,padding,this.width-padding);
@@ -91,15 +119,26 @@ export class Defenses {
   spawn(dx,dy){
     const player=this.scene.player;
     const reflect=(pos,delta,size)=>pos+delta<60 || pos+delta>size-60 ? pos-delta : pos+delta;
-    return {x:clamp(reflect(player.x,dx,this.width),60,this.width-60),
-            y:clamp(reflect(player.y,dy,this.height),60,this.height-60)};
+    const point={x:clamp(reflect(player.x,dx,this.width),60,this.width-60),
+                 y:clamp(reflect(player.y,dy,this.height),60,this.height-60)};
+    const clear=p=>this.towers.every(tower=>!this.overlaps(tower,p,55));
+    if(clear(point))return point;
+    let closest=null, distance=Infinity;
+    for(let x=60;x<=this.width-60;x+=64)for(let y=60;y<=this.height-60;y+=64){
+      const candidate={x,y}, d=this.scene.distance(point,candidate);
+      if(d<distance && clear(candidate)){closest=candidate;distance=d}
+    }
+    return closest;
   }
   build(type,point){
     const {x,y}=point, scene=this.scene;
-    scene.add.rectangle(x,y+5,34,25,0x334646).setStrokeStyle(2,type.color).setDepth(3);
-    const head=scene.add.text(x,y-3,type.icon,{fontSize:"24px",color:"#"+type.color.toString(16)})
-      .setOrigin(.5).setDepth(4);
-    this.towers.push({x,y,type,head,remaining:0});
+    scene.add.rectangle(x,y,halfTower*2,halfTower*2,0x243c40)
+      .setStrokeStyle(3,type.color).setDepth(3);
+    scene.add.circle(x,y,23,0x40565a).setStrokeStyle(2,type.color).setDepth(3);
+    const barrel=scene.add.rectangle(x,y,38,10,type.color).setOrigin(0,.5).setDepth(4);
+    scene.add.text(x,y,type.icon,{fontSize:"32px",color:"#"+type.color.toString(16)})
+      .setOrigin(.5).setDepth(5);
+    this.towers.push({x,y,type,barrel,remaining:0});
     this.stock-=type.cost;
     this.refresh();
   }
@@ -135,7 +174,11 @@ export class Defenses {
       if(!target)continue;
       tower.remaining=type.cooldown;
       const impact={x:target.s.x,y:target.s.y};
-      const shot=scene.add.graphics().setDepth(7).lineStyle(3,type.color).lineBetween(x,y,impact.x,impact.y);
+      const angle=Math.atan2(impact.y-y,impact.x-x);
+      tower.barrel.setRotation(angle);
+      const muzzleX=x+38*Math.cos(angle), muzzleY=y+38*Math.sin(angle);
+      scene.effect(scene.add.circle(muzzleX,muzzleY,8,type.color).setDepth(7),.16,0,0,1);
+      const shot=scene.add.graphics().setDepth(7).lineStyle(3,type.color).lineBetween(muzzleX,muzzleY,impact.x,impact.y);
       scene.effect(shot,.14);
       if(type===types[2]){
         scene.impact(impact.x,impact.y,type.color,false,true);
