@@ -536,6 +536,7 @@ class ge extends Lt.Scene {
         pt.setVolume(Number(b.target.value) / 100)),
       (this.hitStopUntil = 0),
       (this.lastHitStop = -1000),
+      (this.lastAttackShake = -Infinity),
       (this.build = new fe()),
       (this.combat = new ce(this, (name) => pt.play(name))),
       (this.runTime = 0),
@@ -677,6 +678,8 @@ class ge extends Lt.Scene {
     renderPanel(this, title, detail, choices, true);
   }
   pauseGame() {
+    // A manual pause during placement cancels placement and stays paused.
+    if (this.mode === "placement") this.defenses.cancel();
     (this.mode === "play"
       ? ((this.mode = "pause"),
         this.showPanel("歇一小会儿", "暂时安全，整装再出发。", [
@@ -688,6 +691,26 @@ class ge extends Lt.Scene {
         ]))
       : this.mode === "pause" && ((this.mode = "play"), this.closePanel()),
       this.sync());
+  }
+  beginPlacement() {
+    if (this.mode !== "play") return;
+    this.mode = "placement";
+    this.accumulator = 0;
+    wt();
+    Tt.enabled = false;
+    pt.setActive(false);
+    this.tweens.pauseAll();
+    this.cameras.main.shakeEffect.reset();
+    document.getElementById("game").classList.add("is-placing");
+  }
+  endPlacement() {
+    document.getElementById("game").classList.remove("is-placing");
+    if (this.mode !== "placement") return;
+    this.accumulator = 0;
+    this.mode = "play";
+    Tt.enabled = true;
+    this.tweens.resumeAll();
+    pt.setActive(true);
   }
   chooseClass() {
     this.showUpgradeCards(
@@ -818,6 +841,19 @@ class ge extends Lt.Scene {
     enemy.hp = Math.max(0, enemy.hp - actual);
     this.damageNumbers.add(enemy, actual, { ...meta, crit });
     if (!meta.dot) {
+      // One restrained kick per burst; damage-over-time never shakes the view.
+      const now = performance.now();
+      if (
+        this.mode === "play" &&
+        now - (this.lastAttackShake ?? -Infinity) >= 160
+      ) {
+        this.lastAttackShake = now;
+        this.cameras.main.shake(
+          crit || enemy.hp <= 0 ? 75 : 55,
+          crit || enemy.hp <= 0 ? 0.0015 : 0.0009,
+          false,
+        );
+      }
       pt.play("hit");
       this.impact(enemy.s.x, enemy.s.y, color, crit, enemy.hp <= 0);
       this.flashEnemy(enemy);

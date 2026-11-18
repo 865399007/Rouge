@@ -1445,3 +1445,6 @@ kbd {
   }
 }
 .class-card .class-portrait{left:auto;top:auto}
+.placement-notice {display:none;position:absolute;left:50%;top:22%;transform:translateX(-50%);padding:9px 16px;background:#f2e7ccee;border:2px solid #302e26;border-radius:8px;color:#514c3b;font-size:12px;text-align:center;pointer-events:none;max-width:90%;}
+.is-placing .placement-notice {display:block;}
+.is-placing #tower-tools .build-tip {color:#714b2b;font-weight:bold;}

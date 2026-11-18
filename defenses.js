@@ -54,12 +54,14 @@ export class Defenses {
         button.setPointerCapture(event.pointerId);
         this.drag = {
           id: event.pointerId,
+          button,
           type,
           startX: event.clientX,
           startY: event.clientY,
           x: event.clientX,
           y: event.clientY,
         };
+        scene.beginPlacement();
         this.wheel.style.top =
           button.offsetTop + button.offsetHeight / 2 + "px";
         this.wheel.hidden = false;
@@ -79,7 +81,7 @@ export class Defenses {
             event.clientX - this.drag.startX,
             event.clientY - this.drag.startY,
           ) >= 4;
-        if (moved && scene.mode === "play" && point && this.valid(point))
+        if (moved && scene.mode === "placement" && point && this.valid(point))
           this.build(type, point);
         this.cancel();
       };
@@ -90,9 +92,21 @@ export class Defenses {
     });
     const tip = document.createElement("small");
     tip.className = "build-tip";
-    tip.textContent = "按住塔型 · 拖动选址";
+    tip.textContent = "按住暂停 · 松手建造";
     this.tools.append(tip);
     this.refresh();
+    const cancelOnBlur = () => this.cancel();
+    const cancelWhenHidden = () => {
+      if (document.hidden) this.cancel();
+    };
+    window.addEventListener("blur", cancelOnBlur);
+    window.addEventListener("resize", cancelOnBlur);
+    document.addEventListener("visibilitychange", cancelWhenHidden);
+    scene.events.once("shutdown", () => {
+      window.removeEventListener("blur", cancelOnBlur);
+      window.removeEventListener("resize", cancelOnBlur);
+      document.removeEventListener("visibilitychange", cancelWhenHidden);
+    });
   }
   refresh() {
     this.counter.innerHTML = `<span>防御工坊</span><b>◆ ${this.stock}</b>`;
@@ -101,9 +115,13 @@ export class Defenses {
     );
   }
   cancel() {
+    const drag = this.drag;
     this.drag = null;
     this.wheel.hidden = true;
     this.preview.clear();
+    if (drag?.button?.hasPointerCapture(drag.id))
+      drag.button.releasePointerCapture(drag.id);
+    this.scene.endPlacement();
   }
   location() {
     const rect = this.wheel.getBoundingClientRect();
