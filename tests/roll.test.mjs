@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { Build } from "../progression.js";
 import { Roll } from "../roll.js";
 import { moveCircle } from "../geometry.js";
 function fixture() {
@@ -14,6 +15,7 @@ function fixture() {
   });
   r.scene = {
     mode: "play",
+    build: new Build(1),
     invincible: 0,
     player: { x: 500, y: 500, texture: { key: "hero-ranger" } },
     movementInput: () => ({ x: 0, y: 0 }),
@@ -63,4 +65,18 @@ test("翻滚不能在菜单或建塔时启动，斜向距离不加速，也不�
   blocked.start();
   for (let i = 0; i < 9; i++) blocked.step(1 / 30, { x: 0, y: 0 });
   assert.ok(blocked.scene.player.x <= 543.001);
+});
+
+test("灵巧闪避立即缩短当前和后续翻滚冷却，五级封顶", () => {
+  const roll = fixture(), scene = roll.scene;
+  scene.roll = roll;
+  roll.start();
+  for (let level = 1; level <= 5; level++) {
+    assert.ok(scene.build.apply({ kind: "attribute", id: "evasion" }, scene));
+    assert.equal(roll.cooldown, 5 - level * 0.5);
+  }
+  assert.equal(scene.build.apply({ kind: "attribute", id: "evasion" }, scene), false);
+  for (let i = 0; i < 75; i++) roll.step(1/30, { x: 0, y: 0 });
+  assert.ok(roll.start());
+  assert.equal(roll.cooldown, 2.5);
 });

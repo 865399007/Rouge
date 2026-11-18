@@ -16,9 +16,10 @@ const assert=require('node:assert/strict');
  await page.keyboard.down('d');await page.waitForTimeout(500);await page.keyboard.up('d');
  const moved=await page.evaluate(()=>__game.scene.getScene('garden').player.x);
  assert.ok(moved>start.x+30,'WASD movement');
- const tower=page.locator('#tower-tools button').first();const box=await tower.boundingBox();
- await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2-43,box.y+box.height/2,{steps:8});
- await page.screenshot({path:'artifacts/tower-preview.png'});await page.mouse.up();
+ await page.locator('#tower-tools button').first().click();
+ assert.ok(await page.evaluate(()=>{const s=__game.scene.getScene('garden');return s.distance(s.player,s.defenses.towers[0])===0 && s.mode==='play'}),'Build at hero position');
+ await page.keyboard.down('a'); await page.waitForTimeout(450); await page.keyboard.up('a');
+ assert.ok(await page.evaluate(()=>{const s=__game.scene.getScene('garden');return s.player.x<s.defenses.towers[0].x-57}),'Walk out of the new tower');
  assert.equal(await page.evaluate(()=>__game.scene.getScene('garden').defenses.towers.length),1);
  assert.equal(await page.evaluate(()=>__game.scene.getScene('garden').defenses.stock),0);
  await page.keyboard.press('Space');assert.equal(await page.evaluate(()=>__game.scene.getScene('garden').mode),'pause');
@@ -52,14 +53,31 @@ const assert=require('node:assert/strict');
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  assert.ok(await page.locator('.starter-grid').evaluate(e=>e.scrollTop)>50,'Mobile skill list scrolls by touch');
  await page.locator('.choice-card').filter({hasText:'铁卫'}).click();await page.waitForTimeout(300);
+ const layout=await page.evaluate(()=>{
+   const s=__game.scene.getScene('garden');s.build.add('orbit');s.sync();
+   const rect=q=>document.querySelector(q).getBoundingClientRect();
+   const pad=rect('.action-pad'), tower=rect('#tower-tools button'), roll=rect('#roll');
+   return !document.querySelector('#landscape') && tower.width===tower.height &&
+     roll.width===roll.height && innerWidth-roll.right<20 && innerHeight-roll.bottom<20 &&
+     getComputedStyle(document.querySelector('#roll')).borderRadius==='50%' &&
+     roll.top-rect('#tower-tools button:last-child').bottom>=24 &&
+     Math.abs(roll.x+roll.width/2-tower.x-tower.width/2)<1 &&
+     [...document.querySelectorAll('#tower-tools button')].every((el,i)=>{
+       const r=el.getBoundingClientRect();return r.x===tower.x && r.y>=tower.y+i*tower.height;
+     }) &&
+     innerWidth-pad.right<20 && innerHeight-rect('.stats').bottom<=5 && rect('.stats').left<=5 &&
+     rect('.game-top').top>=rect('.mission-clock').bottom && rect('.game-top').left>innerWidth/2 &&
+     rect('#skills').top>=rect('.bar.xp').bottom;
+ });
+ assert.ok(layout,'Portrait controls, skills and action pad');
  const touchStart=await page.evaluate(()=>__game.scene.getScene('garden').player.x);
- await page.mouse.move(70,400);await page.mouse.down();await page.mouse.move(115,400,{steps:5});await page.waitForTimeout(350);await page.mouse.up();
+ await page.mouse.move(260,400);await page.mouse.down();await page.mouse.move(305,400,{steps:5});await page.waitForTimeout(350);await page.mouse.up();
  assert.ok(await page.evaluate(()=>__game.scene.getScene('garden').player.x)>touchStart+20,'Touch-style floating joystick');
  await page.screenshot({path:'artifacts/battle-mobile.png'});
  await page.setViewportSize({width:844,height:390});await page.waitForTimeout(200);
  await page.keyboard.press('Space');await page.screenshot({path:'artifacts/pause-landscape.png'});
  await page.getByRole('button',{name:/继续行动/}).click();
  assert.deepEqual(errors,[],'No page or HTTP errors');
- console.log('PASS: 5 class choices, movement, actual tower drag/cost, pause/resume, combat, upgrade, boss HUD, restart cleanup, mobile/landscape; no browser errors');
+ console.log('PASS: 5 class choices, movement, one-tap tower construction and exit, pause/resume, combat, upgrade, boss HUD, restart cleanup, mobile/landscape; no browser errors');
  await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

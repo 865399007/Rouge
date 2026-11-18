@@ -37,7 +37,7 @@ export class Roll {
     if (length) this.facing = { x: input.x / length, y: input.y / length };
     this.direction = { ...this.facing };
     this.remaining = BALANCE.roll.duration;
-    this.cooldown = BALANCE.roll.cooldown;
+    this.cooldown = this.scene.build.rollCooldown;
     this.scene.invincible = Math.max(this.scene.invincible, this.remaining);
     this.trailClock = 0;
     this.sync();
@@ -87,13 +87,13 @@ export class Roll {
     this.button.classList.toggle("is-ready", this.cooldown === 0);
     this.button.style.setProperty(
       "--roll-ready",
-      `${(1 - this.cooldown / BALANCE.roll.cooldown) * 100}%`,
+      `${(1 - this.cooldown / this.scene.build.rollCooldown) * 100}%`,
     );
     this.button.setAttribute(
       "aria-label",
       this.cooldown > 0
         ? `翻滚，冷却 ${this.cooldown.toFixed(1)} 秒`
-        : "翻滚，冷却5秒，期间无敌，快捷键Shift",
+        : `翻滚，冷却 ${this.scene.build.rollCooldown} 秒，期间无敌，快捷键 Shift`,
     );
   }
 }

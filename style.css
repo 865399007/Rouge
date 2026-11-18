@@ -1423,13 +1423,20 @@ kbd {
   justify-content: center;
   gap: 1px;
   color: #302e26;
-  background:
-    radial-gradient(circle, #efe4c9 61%, transparent 63%),
-    conic-gradient(#98bb74 var(--roll-ready, 100%), #847d6b 0);
+  background: rgba(239, 228, 201, 0.48);
   box-shadow: 0 4px 0 #302e2640;
   pointer-events: auto;
   touch-action: none;
   cursor: pointer;
+}
+.roll-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(#98bb74 var(--roll-ready, 100%), #847d6b 0);
+  mask-image: radial-gradient(closest-side, transparent calc(100% - 4px), black calc(100% - 3px));
 }
 .roll-button .dodge-icon {
   display: block;
@@ -1464,3 +1471,77 @@ kbd {
     height: 56px;
   }
 }
+
+/* In-game action pad and compact status controls */
+.action-pad {
+  --cell: clamp(44px, 7vmin, 58px);
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: var(--cell);
+  grid-template-rows: auto repeat(3, var(--cell));
+  gap: 5px;
+  pointer-events: none;
+}
+.action-pad #tower-tools { display: contents; pointer-events: none; }
+.action-pad output { grid-column: 1 / -1; }
+.action-pad #tower-tools button {
+  position: relative;
+  inset: auto;
+  width: var(--cell);
+  height: var(--cell);
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  padding: 3px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.action-pad #tower-tools button { grid-template-rows: minmax(0, 1fr) auto; gap: 0; padding: 1px 2px; }
+.action-pad #tower-tools button img { width: 90%; height: 100%; min-height: 0; object-fit: contain; }
+.action-pad .tower-caption { width: 100%; display: flex; justify-content: space-evenly; align-items: baseline; font-size: 10px; line-height: 12px; color: #332c20; }
+.action-pad #tower-tools small { margin: 0; font-size: 9px; color: #514733; }
+.action-pad #tower-tools button:disabled { opacity: 0.82; filter: saturate(0.72); border-color: #827961; box-shadow: none; }
+#roll {
+  position: relative;
+  inset: auto;
+  justify-self: center;
+  margin-top: 19px;
+  width: clamp(48px, 7vmin, 60px);
+  height: clamp(48px, 7vmin, 60px);
+  border-radius: 50%;
+}
+.action-pad #tower-tools output { justify-content: center; white-space: nowrap; }
+.hud .stats {
+  left: max(4px, env(safe-area-inset-left));
+  right: auto;
+  bottom: max(4px, env(safe-area-inset-bottom));
+  padding: 0;
+}
+.vitals #skills { position: static; margin-top: 7px; min-height: 0; gap: 5px; }
+.vitals #skills span { width: clamp(28px, 4vmin, 38px); height: clamp(28px, 4vmin, 38px); border-radius: 5px; }
+.vitals #skills svg { width: 65%; height: 65%; }
+.game-top > #pause, .game-top .settings summary { display: grid; place-items: center; width: 38px; height: 38px; padding: 7px; }
+.game-top svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; fill: none; }
+#pause svg { fill: currentColor; stroke: none; }
+@media (orientation: portrait) {
+  .hud .mission-clock { left: auto; right: 12px; top: 14px; transform: none; }
+  .hud .game-top { left: auto; right: 12px; top: 85px; gap: 3px; }
+  .game-top .settings-panel { left: auto; right: 0; }
+}
+
+#tower-upgrade {
+  position: absolute;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  padding: 7px 9px;
+  border: 2px solid #383427;
+  border-radius: 6px;
+  background: #ffdf8c;
+  color: #332b1f;
+  font: bold 12px/1.2 sans-serif;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+#tower-upgrade:disabled { background: #e2d8c2; color: #605847; }

@@ -6,15 +6,66 @@ export const mounts = [
   { id: "boar", armor: 12, passiveIcon: "armor", passiveName: "护甲", name: "铁棘战猪", range: 250, cooldown: 1.9, damage: 46, color: 0xd8ac81 },
 ];
 
+// Local coordinates relative to the chassis centre. Far and near feet land
+// on separate tracks, with diagonally opposite legs sharing a swing phase.
+const walkerLegs = [
+  { hipX: -26, hipY: 3, footX: -48, ground: 27, bend: -1, phase: 0, far: true },
+  { hipX: 17, hipY: 2, footX: 43, ground: 25, bend: 1, phase: Math.PI, far: true },
+  { hipX: -18, hipY: 9, footX: -32, ground: 36, bend: -1, phase: Math.PI, far: false },
+  { hipX: 10, hipY: 8, footX: 29, ground: 35, bend: 1, phase: 0, far: false },
+];
+
+function animateWalker(mount, player, dt) {
+  const gait = mount.gait;
+  const dx = player.x - gait.lastX, dy = player.y - gait.lastY;
+  const distance = Math.hypot(dx, dy);
+  gait.lastX = player.x;
+  gait.lastY = player.y;
+  gait.phase += distance / 11;
+  const moving = distance > 0.01;
+  const blend = Math.min(1, dt * 16);
+  gait.stride += ((moving ? 1 : 0) - gait.stride) * blend;
+  if (Math.abs(dx) > 0.01) mount.sprite.setFlipX(dx < 0);
+  const bob = Math.cos(2 * gait.phase) * gait.stride * 1.6;
+  mount.sprite.setPosition(player.x, player.y + 20 + bob);
+  const g = gait.art.clear().setPosition(player.x, player.y + 20)
+    .setScale(mount.sprite.flipX ? -1 : 1, 1);
+  for (const leg of walkerLegs) {
+    const phase = gait.phase + leg.phase;
+    const footX = leg.footX - 10 * Math.cos(phase) * gait.stride;
+    const footY = leg.ground - 10 * Math.max(0, Math.sin(phase)) * gait.stride;
+    const hipY = leg.hipY + bob;
+    const x = footX - leg.hipX, y = footY - hipY;
+    const length = Math.hypot(x, y);
+    // Two equal-length links meet at the knee, so lifting a foot folds the joint.
+    const offset = leg.bend * Math.sqrt(Math.max(0, 25 ** 2 - length ** 2 / 4)) / length;
+    const kneeX = leg.hipX + x / 2 + y * offset;
+    const kneeY = hipY + y / 2 - x * offset;
+    const links = [{ x:leg.hipX, y:hipY }, { x:kneeX, y:kneeY }, { x:footX, y:footY }];
+    g.lineStyle(8, 0x303a3c).strokePoints(links)
+      .lineStyle(4, leg.far ? 0x556c6e : 0x91ada6).strokePoints(links)
+      .fillStyle(0x303a3c).fillCircle(kneeX, kneeY, 5)
+      .fillStyle(leg.far ? 0xb48c50 : 0xffc968).fillCircle(kneeX, kneeY, 3)
+      .lineStyle(5, 0x344447).lineBetween(footX-3, footY, footX+7, footY);
+  }
+}
+
 export function ride(scene, type) {
   scene.mount?.sprite.destroy();
   scene.mount?.label.destroy();
   const { x, y } = scene.player;
-  const sprite = scene.add.image(x, y + 20, "mount-" + type.id).setDepth(4.9);
+  const walker = type.id === "walker";
+  const sprite = scene.add.image(x, y + 20, walker ? "mount-walker-chassis" : "mount-" + type.id).setDepth(4.9);
   const label = scene.add.text(x, y + 47, type.name + " · " + type.passiveName + " · 60秒", {
     fontSize: "12px", color: "#fff2cf", stroke: "#342d26", strokeThickness: 3,
   }).setOrigin(0.5, 0).setDepth(9);
   scene.mount = { type, sprite, label, shield: type.shield || 0, remaining: 60, cooldown: 0 };
+  if (walker) {
+    const art = scene.add.graphics().setDepth(4.8);
+    scene.mount.gait = { art, phase: 0, stride: 0, lastX: x, lastY: y };
+    sprite.once("destroy", () => { if (art.active) art.destroy(); });
+    animateWalker(scene.mount, scene.player, 0);
+  }
   scene.sync();
 }
 
@@ -32,8 +83,11 @@ export function updateMount(scene, dt) {
   }
   const p = scene.player;
   const input = scene.movementInput();
-  if (input.x) sprite.setFlipX(input.x < 0);
-  sprite.setPosition(p.x, p.y + 20 + (input.x || input.y ? Math.sin(scene.runTime * 18) * 2 : 0));
+  if (mount.gait) animateWalker(mount, p, dt);
+  else {
+    if (input.x) sprite.setFlipX(input.x < 0);
+    sprite.setPosition(p.x, p.y + 20 + (input.x || input.y ? Math.sin(scene.runTime * 18) * 2 : 0));
+  }
   label.setPosition(p.x, p.y + 47).setText(type.name + (type.shield && !mount.shield ? "" : " · " + type.passiveName) + " · " + Math.ceil(mount.remaining) + "秒");
   mount.cooldown -= dt;
   if (mount.cooldown > 0) return;

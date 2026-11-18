@@ -26,6 +26,7 @@ export const ATTRIBUTES = [
     description: "护甲 +5，按 100 / (100 + 护甲) 减伤",
     max: 5,
   },
+  { id: "evasion", name: "灵巧闪避", description: "闪避冷却缩短 0.5 秒，满级冷却 2.5 秒", max: 5 },
   { id: "speed", name: "轻装步伐", description: "移动速度 +4%", max: 5 },
   {
     id: "magnet",
@@ -55,6 +56,9 @@ export class Build {
   }
   get haste() {
     return 0.06 * (this.attributes.haste || 0);
+  }
+  get rollCooldown() {
+    return BALANCE.roll.cooldown - 0.5 * (this.attributes.evasion || 0);
   }
   get critChance() {
     return (this.job?.crit ?? 0.05) + 0.04 * (this.attributes.crit || 0);
@@ -143,6 +147,10 @@ export class Build {
     const a = ATTRIBUTES.find((x) => x.id === choice.id);
     if (!a || (this.attributes[a.id] || 0) >= a.max) return false;
     this.attributes[a.id] = (this.attributes[a.id] || 0) + 1;
+    if (a.id === "evasion" && scene.roll) {
+      scene.roll.cooldown = Math.max(0, scene.roll.cooldown - 0.5);
+      scene.roll.sync();
+    }
     scene.maxHp =
       (this.job?.hp ?? BALANCE.player.hp) +
       12 * (this.attributes.vitality || 0);

@@ -1,7 +1,7 @@
 import { BALANCE } from "./balance.js";
 // Original vector art and presentation layer.
 export const artKeys = [
-  "mount-walker", "mount-stag", "mount-drake", "mount-lynx", "mount-boar",
+  "mount-walker-chassis", "mount-walker", "mount-stag", "mount-drake", "mount-lynx", "mount-boar",
   "hero-ranger",
   "hero-vanguard",
   "hero-pyromancer",
@@ -46,6 +46,7 @@ const paths = {
   heal_supply: '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z"/>',
 };
 const buffPaths = {
+  evasion: '<circle cx="15" cy="6" r="2"/><path d="m13 10-5 4 5 2-4 5m4-11 3 4 5-1M3 8h5m-7 4h4"/>',
   shield: '<path d="m12 2 9 4v6q0 6-9 10-9-4-9-10V6Zm-4 10h8m-4-4v8"/>',
   power: '<path d="M5 19 18 6l1 5M5 19l5-1M4 13l7-7"/>',
   haste: '<path d="m3 6 6 6-6 6m9-12 6 6-6 6"/>',

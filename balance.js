@@ -10,7 +10,7 @@ export const BALANCE = {
   elites: { first: 25, interval: 30 },
   roll: { cooldown: 5, duration: 0.3, distance: 150 },
   skillLevelGates: [1, 3, 6, 10, 15],
-  damageScales: [1, 1.22, 1.48, 1.78, 2.12],
+  damageScales: [1, 1.22, 1.48, 1.78, 3.2],
   cooldownScales: [1, 0.96, 0.92, 0.88, 0.84],
   statCap: 5,
 };

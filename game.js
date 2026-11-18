@@ -67,12 +67,15 @@ St.innerHTML = '<span class="joystick-knob"></span>';
 Zt.append(St);
 const Jt = St.firstElementChild;
 let Dt = null;
+let towerTap = null;
 function wt() {
+  towerTap = null;
   St.hidden = true;
   ((Dt = null), (Tt.x = Tt.y = 0), (Jt.style.transform = "translate(0, 0)"));
 }
 function Qt(st) {
   if (st.pointerId !== Dt) return;
+  if (towerTap && Math.hypot(st.clientX - towerTap.x, st.clientY - towerTap.y) >= 6) towerTap = null;
   const b = St.getBoundingClientRect(),
     Y = st.clientX - b.left - b.width / 2,
     K = st.clientY - b.top - b.height / 2,
@@ -87,19 +90,25 @@ St.hidden = true;
 Zt.addEventListener(
   "pointerdown",
   (event) => {
-    if (event.button === 0 && event.target.tagName === "CANVAS" &&
-        Ct.scene.getScenes(true)[0]?.defenses?.tapTower(event)) return;
+    const defenses = Ct.scene.getScenes(true)[0]?.defenses;
+    const tower = event.button === 0 && event.target.tagName === "CANVAS"
+      ? defenses?.towerAtPointer(event) : null;
+    if (tower && Dt !== null) {
+      defenses.selectTower(tower);
+      return;
+    }
     const bounds = Zt.getBoundingClientRect();
     if (
       !Tt.enabled ||
       Dt !== null ||
       event.button !== 0 ||
-      event.clientX >= bounds.left + bounds.width / 2 ||
       event.target.closest("button,details,input,dialog")
     )
       return;
     event.preventDefault();
     Dt = event.pointerId;
+    if (!tower && defenses?.selectedTower) defenses.selectTower(null);
+    if (tower) towerTap = { tower, defenses, x: event.clientX, y: event.clientY };
     St.style.left = event.clientX - bounds.left + "px";
     St.style.top = event.clientY - bounds.top + "px";
     St.hidden = false;
@@ -111,66 +120,21 @@ Zt.addEventListener(
 Zt.addEventListener("pointermove", Qt);
 for (const type of ["pointerup", "pointercancel", "lostpointercapture"])
   Zt.addEventListener(type, (event) => {
-    if (event.pointerId === Dt) wt();
+    if (event.pointerId !== Dt) return;
+    if (type === "pointerup" && towerTap &&
+        Math.hypot(event.clientX - towerTap.x, event.clientY - towerTap.y) < 6 &&
+        towerTap.defenses.towers.includes(towerTap.tower)) {
+      towerTap.defenses.selectTower(towerTap.tower);
+    }
+    wt();
   });
 window.addEventListener("blur", wt);
 document.addEventListener("visibilitychange", wt);
 window.addEventListener("resize", wt);
-const Bt = document.createElement("button");
-Bt.id = "landscape";
-Bt.textContent = "⛶ 全屏";
-document.getElementById("pause").before(Bt);
 const Vt = document.createElement("div");
 Vt.className = "orientation-hint";
-Vt.textContent = "横过手机，使用按住屏幕左侧拖动";
+Vt.textContent = "按住战场任意位置拖动即可移动";
 Zt.append(Vt);
-const $t = () =>
-    navigator.standalone ||
-    matchMedia("(display-mode: standalone)").matches ||
-    matchMedia("(display-mode: fullscreen)").matches,
-  jt = () => document.fullscreenElement || document.webkitFullscreenElement,
-  Ot = document.createElement("dialog");
-Ot.className = "fullscreen-guide";
-Ot.innerHTML =
-  "<h2>全屏游玩</h2><p>iPhone / iPad：点击 Safari 的分享按钮 → 添加到主屏幕（如有“作为网页 App 打开”，请保持开启）。</p><p>然后从桌面的“末日小队”图标进入，隐藏浏览器地址栏。横过手机，并关闭系统竖屏锁定。</p><p>其他浏览器请允许全屏后重试。</p><button>知道了</button>";
-document.body.append(Ot);
-Ot.querySelector("button").onclick = () => Ot.close();
-function Yt() {
-  Bt.textContent = jt() ? "⛶ 退出" : $t() ? "⛶ 已全屏" : "⛶ 全屏";
-}
-for (const st of ["fullscreenchange", "webkitfullscreenchange"])
-  document.addEventListener(st, Yt);
-Yt();
-Bt.onclick = async () => {
-  var b, Y, K, Q;
-  const st = document.querySelector(".game-frame");
-  try {
-    if (jt()) {
-      await (((b = document.exitFullscreen) == null
-        ? void 0
-        : b.call(document)) ??
-        ((Y = document.webkitExitFullscreen) == null
-          ? void 0
-          : Y.call(document)));
-      return;
-    }
-    if ($t()) return;
-    const Z = st.requestFullscreen || st.webkitRequestFullscreen;
-    if (!Z) {
-      Ot.showModal();
-      return;
-    }
-    await Z.call(st);
-    try {
-      await ((Q = (K = screen.orientation) == null ? void 0 : K.lock) == null
-        ? void 0
-        : Q.call(K, "landscape"));
-    } catch {}
-  } catch {
-    Ot.showModal();
-  }
-  Yt();
-};
 class ee {
   constructor() {
     ((this.volume = 0.35),
@@ -526,7 +490,6 @@ class ge extends Lt.Scene {
     this.events.once("shutdown", () => {
       this.panel?.destroy();
       this.damageNumbers?.destroy();
-      this.defenses?.cancel();
     });
     document.querySelector(".settings").removeAttribute("open");
     document.getElementById("timer").textContent = "00:00";
@@ -672,8 +635,8 @@ class ge extends Lt.Scene {
     }
   }
   closePanel() {
-    (this.defenses.cancel(),
-      wt(),
+    this.defenses?.selectTower(null);
+    (wt(),
       (Tt.enabled = !0),
       document.getElementById("game").classList.remove("has-panel"),
       this.panel && this.panel.destroy(!0),
@@ -693,8 +656,6 @@ class ge extends Lt.Scene {
     renderPanel(this, title, detail, choices, true);
   }
   pauseGame() {
-    // A manual pause during placement cancels placement and stays paused.
-    if (this.mode === "placement") this.defenses.cancel();
     (this.mode === "play"
       ? ((this.mode = "pause"),
         this.showPanel("歇一小会儿", "暂时安全，整装再出发。", [
@@ -706,28 +667,6 @@ class ge extends Lt.Scene {
         ]))
       : this.mode === "pause" && ((this.mode = "play"), this.closePanel()),
       this.sync());
-  }
-  beginPlacement() {
-    if (this.mode !== "play") return;
-    this.mode = "placement";
-    this.roll.sync();
-    this.accumulator = 0;
-    wt();
-    Tt.enabled = false;
-    pt.setActive(false);
-    this.tweens.pauseAll();
-    this.cameras.main.shakeEffect.reset();
-    document.getElementById("game").classList.add("is-placing");
-  }
-  endPlacement() {
-    document.getElementById("game").classList.remove("is-placing");
-    if (this.mode !== "placement") return;
-    this.accumulator = 0;
-    this.mode = "play";
-    this.roll?.sync();
-    Tt.enabled = true;
-    this.tweens.resumeAll();
-    pt.setActive(true);
   }
   chooseClass() {
     this.showUpgradeCards(

@@ -7,7 +7,6 @@ import {
 } from "./geometry.js";
 const types = TOWER_TUNING;
 const halfTower = TOWER_RADIUS;
-const reach = 200;
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
 export class Defenses {
@@ -33,160 +32,72 @@ export class Defenses {
     this.stock = BALANCE.initialMaterials;
     this.towers = [];
     this.drops = [];
-    this.preview = scene.add.graphics().setDepth(12);
+    this.upgradeButton = document.getElementById("tower-upgrade");
+    this.upgradeButton.hidden = true;
+    this.upgradeButton.onclick = () => {
+      const tower = this.selectedTower;
+      if (scene.mode !== "play" || !tower || this.upgradeButton.disabled) return;
+      this.upgradeTower(tower);
+      this.selectTower(null);
+    };
+    scene.events.on("render", this.positionUpgrade, this);
+    scene.events.once("shutdown", () => {
+      scene.events.off("render", this.positionUpgrade, this);
+      this.upgradeButton.onclick = null;
+      this.selectTower(null);
+    });
     this.tools = document.getElementById("tower-tools");
     this.tools.replaceChildren();
     this.counter = document.createElement("output");
     this.tools.append(this.counter);
-    this.wheel = document.createElement("div");
-    this.wheel.className = "placement-wheel";
-    this.wheel.hidden = true;
-    this.knob = document.createElement("i");
-    this.wheel.append(this.knob);
-    this.tools.append(this.wheel);
-    this.buttons = types.map((type) => {
+    this.buttons = types.map((type, i) => {
       const button = document.createElement("button");
-      button.innerHTML = `<img src="./assets/${["tower-rapid", "tower-frost", "tower-blast"][types.indexOf(type)]}.svg" alt=""><span>${type.name}<small>${type.cost} 材料 · 60 秒</small></span>`;
-      button.setAttribute(
-        "aria-label",
-        `${type.name}，${type.cost} 材料，按住拖动建造`,
-      );
-      button.title = "按住后在轮盘上拖动选址，松手建造";
-      this.tools.append(button);
-      button.onpointerdown = (event) => {
-        if (scene.mode !== "play" || this.drag || event.button !== 0) return;
+      const image = ["build-rapid", "build-frost", "build-blast"][i];
+      button.innerHTML = `<img src="./assets/${image}.svg" alt=""><span class="tower-caption"><b>${type.name.slice(0, -1)}</b><small>◆${type.cost}</small></span>`;
+      button.title = `${type.name} · ${type.cost} 材料 · 点击原地建造`;
+      button.setAttribute("aria-label", button.title);
+      button.onpointerdown = event => {
+        if (event.button !== 0) return;
         event.preventDefault();
-        button.setPointerCapture(event.pointerId);
-        this.drag = {
-          id: event.pointerId,
-          button,
-          type,
-          startX: event.clientX,
-          startY: event.clientY,
-          x: event.clientX,
-          y: event.clientY,
-        };
-        scene.beginPlacement();
-        this.wheel.style.top =
-          button.offsetTop + button.offsetHeight / 2 + "px";
-        this.wheel.hidden = false;
-        this.drawPreview();
+        this.buildAtPlayer(type);
       };
-      button.onpointermove = (event) => {
-        if (this.drag?.id !== event.pointerId) return;
-        Object.assign(this.drag, { x: event.clientX, y: event.clientY });
-        this.drawPreview();
+      button.onclick = event => {
+        if (!event.detail) this.buildAtPlayer(type);
       };
-      button.onpointerup = (event) => {
-        if (this.drag?.id !== event.pointerId) return;
-        Object.assign(this.drag, { x: event.clientX, y: event.clientY });
-        const point = this.location();
-        const moved =
-          Math.hypot(
-            event.clientX - this.drag.startX,
-            event.clientY - this.drag.startY,
-          ) >= 4;
-        if (moved && scene.mode === "placement" && point && this.valid(point))
-          this.build(type, point);
-        this.cancel();
-      };
-      button.onlostpointercapture = button.onpointercancel = (event) => {
-        if (this.drag?.id === event.pointerId) this.cancel();
-      };
+      this.tools.append(button);
       return button;
     });
-    const tip = document.createElement("small");
-    tip.className = "build-tip";
-    tip.textContent = "松手建造 · 点塔升级";
-    this.tools.append(tip);
     this.refresh();
-    const cancelOnBlur = () => this.cancel();
-    const cancelWhenHidden = () => {
-      if (document.hidden) this.cancel();
-    };
-    window.addEventListener("blur", cancelOnBlur);
-    window.addEventListener("resize", cancelOnBlur);
-    document.addEventListener("visibilitychange", cancelWhenHidden);
-    scene.events.once("shutdown", () => {
-      window.removeEventListener("blur", cancelOnBlur);
-      window.removeEventListener("resize", cancelOnBlur);
-      document.removeEventListener("visibilitychange", cancelWhenHidden);
-    });
   }
   refresh() {
-    this.counter.innerHTML = `<span>防御工坊</span><b>◆ ${this.stock}</b>`;
+    if (this.selectedTower) this.refreshUpgrade(this.selectedTower);
+    this.counter.textContent = `材料 ◆ ${this.stock}`;
     this.buttons.forEach((button, i) => {
       button.disabled = this.stock < types[i].cost;
-      button.querySelector("small").innerHTML =
-        `材料 ${types[i].cost}<br>持续 60 秒`;
     });
   }
-  cancel() {
-    const drag = this.drag;
-    this.drag = null;
-    this.wheel.hidden = true;
-    this.preview.clear();
-    if (drag?.button?.hasPointerCapture(drag.id))
-      drag.button.releasePointerCapture(drag.id);
-    this.scene.endPlacement();
-  }
-  location() {
-    const rect = this.wheel.getBoundingClientRect();
-    const radius = rect.width / 2;
-    const dx = this.drag.x - rect.left - radius;
-    const dy = this.drag.y - rect.top - radius;
-    if (!radius || Math.hypot(dx, dy) > radius) {
-      this.knob.style.transform = "translate(-50%, -50%)";
-      return null;
+  buildAtPlayer(type) {
+    if (this.scene.mode !== "play" || this.stock < type.cost) return;
+    const p = this.scene.player;
+    if (this.towers.some(t => this.overlaps(t, p, halfTower))) {
+      this.counter.textContent = `此处已有防御塔 · ◆ ${this.stock}`;
+      return;
     }
-    this.knob.style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px)`;
-    const player = this.scene.player;
-    return {
-      x: player.x + (dx / radius) * reach,
-      y: player.y + (dy / radius) * reach,
-    };
-  }
-  valid(point) {
-    return (
-      this.stock >= this.drag.type.cost &&
-      point.x >= halfTower &&
-      point.y >= halfTower &&
-      point.x <= this.width - halfTower &&
-      point.y <= this.height - halfTower &&
-      !this.overlaps(point, this.scene.player, 25) &&
-      this.scene.enemies.every(
-        (enemy) => !this.overlaps(point, enemy.s, enemy.r),
-      ) &&
-      this.towers.every((tower) => !this.overlaps(tower, point, halfTower + 4))
-    );
+    this.exitTower = this.build(type, p);
   }
   overlaps(tower, actor, radius) {
     return circlesOverlap(tower, halfTower, actor, radius);
   }
   move(actor, dx, dy, radius) {
-    moveCircle(actor, dx, dy, radius, this.towers, this.width, this.height);
+    let obstacles = this.towers;
+    if (actor === this.scene.player && this.exitTower) {
+      obstacles = obstacles.filter(t => t !== this.exitTower);
+    }
+    moveCircle(actor, dx, dy, radius, obstacles, this.width, this.height);
+    if (actor === this.scene.player && this.exitTower && !this.overlaps(this.exitTower, actor, radius)) {
+      this.exitTower = null;
+    }
   }
-  drawPreview() {
-    if (!this.drag) return;
-    const point = this.location(),
-      player = this.scene.player;
-    this.preview
-      .clear()
-      .lineStyle(2, 0xd7efdc, 0.8)
-      .strokeCircle(player.x, player.y, reach);
-    if (!point) return;
-    const color = this.valid(point) ? 0x90f4aa : 0xff7777;
-    this.preview
-      .fillStyle(color, 0.12)
-      .fillCircle(point.x, point.y, this.drag.type.range)
-      .lineStyle(2, color, 0.3)
-      .strokeCircle(point.x, point.y, this.drag.type.range)
-      .fillStyle(color, 0.5)
-      .fillCircle(point.x, point.y, halfTower)
-      .lineStyle(3, 0x292822, 1)
-      .strokeCircle(point.x, point.y, halfTower);
-  }
-
   confine(sprite, padding) {
     sprite.x = clamp(sprite.x, padding, this.width - padding);
     sprite.y = clamp(sprite.y, padding, this.height - padding);
@@ -264,6 +175,7 @@ export class Defenses {
       0,
       1.5,
     );
+    return tower;
   }
   drop(enemy) {
     const value = materialDrop(enemy);
@@ -304,7 +216,28 @@ export class Defenses {
     tower.label.setText(tower.level === 5 ? "Lv.5 · 永久" :
       `Lv.${tower.level} · ${Math.ceil(tower.lifetime)}秒 · 升级◆${cost}`);
   }
-  tapTower(event) {
+  selectTower(tower) {
+    clearTimeout(this.upgradeTimer);
+    this.selectedTower = tower;
+    this.upgradeButton.hidden = !tower;
+    if (!tower) return;
+    this.refreshUpgrade(tower);
+    this.positionUpgrade();
+    this.upgradeTimer = setTimeout(() => this.selectTower(null), 2000);
+  }
+  refreshUpgrade(tower) {
+    const cost = tower.type.cost + tower.level - 1;
+    const full = tower.level >= 5;
+    this.upgradeButton.disabled = full || this.stock < cost;
+    this.upgradeButton.textContent = full ? "已满级" : `↑ 升级 ◆${cost}`;
+  }
+  positionUpgrade() {
+    if (!this.selectedTower) return;
+    const view = this.scene.cameras.main.worldView;
+    this.upgradeButton.style.left = (this.selectedTower.x - view.x) / view.width * 100 + "%";
+    this.upgradeButton.style.top = (this.selectedTower.y - view.y) / view.height * 100 + "%";
+  }
+  towerAtPointer(event) {
     if (this.scene.mode !== "play") return false;
     const box = event.target.getBoundingClientRect();
     const scale = this.scene.scale;
@@ -312,10 +245,7 @@ export class Defenses {
       (event.clientX - box.left) * scale.width / box.width,
       (event.clientY - box.top) * scale.height / box.height
     );
-    const tower = this.towers.find(t => this.scene.distance(t, point) <= halfTower);
-    if (!tower) return false;
-    this.upgradeTower(tower);
-    return true;
+    return this.towers.find(t => this.scene.distance(t, point) <= halfTower);
   }
   upgradeTower(tower) {
     const cost = tower.type.cost + tower.level - 1;
@@ -329,7 +259,9 @@ export class Defenses {
   destroyTower(tower) {
     const index = this.towers.indexOf(tower);
     if (index < 0) return;
+    if (this.selectedTower === tower) this.selectTower(null);
     this.towers.splice(index, 1);
+    if (this.exitTower === tower) this.exitTower = null;
     this.scene.tweens.killTweensOf(tower.barrel);
     for (const part of [
       tower.s,
@@ -353,7 +285,6 @@ export class Defenses {
   update(dt) {
     const scene = this.scene, player = scene.player;
     if (scene.mode !== "play") return;
-    this.drawPreview();
     for (let i = this.drops.length - 1; i >= 0; i--) {
       const drop = this.drops[i];
       const { sprite, value, kind } = drop,
