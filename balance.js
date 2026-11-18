@@ -42,7 +42,7 @@ export const TOWER_TUNING = [
   {
     name: "冰晶塔",
     icon: "❄",
-    cost: 5,
+    cost: 3,
     color: 0x94e4ff,
     range: 260,
     cooldown: 1.8,
@@ -52,7 +52,8 @@ export const TOWER_TUNING = [
   {
     name: "爆裂塔",
     icon: "✹",
-    cost: 7,
+    cost: 3,
+    blastRadius: 70,
     color: 0xff9468,
     range: 280,
     cooldown: 2.5,
@@ -135,12 +136,12 @@ export function eliteStats(seconds) {
     speed: Math.round(base.speed * 1.15),
     damage: Math.round(base.damage * 1.35),
     xp: 12,
-    materials: seconds < 180 ? 1 : 2,
+    materials: seconds < 180 ? 3 : 4,
   };
 }
-export function materialDrop(enemy) {
-  if (!enemy.boss && !enemy.elite) return 0;
-  return Math.max(0, Math.floor(enemy.materials ?? (enemy.boss ? 3 : 1)));
+export function materialDrop(enemy, roll) {
+  if (!enemy.boss && !enemy.elite) return roll < 0.12 ? 1 : 0;
+  return Math.max(0, Math.floor(enemy.materials ?? (enemy.boss ? 6 : 3)));
 }
 export function bossStats(index) {
   const final = index === BALANCE.bosses.length - 1;
@@ -151,7 +152,7 @@ export function bossStats(index) {
     hp,
     maxHp: hp,
     speed: final ? 66 : 49 + index * 1.6,
-    r: final ? 55 : 38,
+    r: final ? 69 : 48,
     damage: final ? 26 : 17 + index,
     xp: final ? 120 : 32 + index * 7,
     armor: final ? 20 : 8 + index,
@@ -160,7 +161,7 @@ export function bossStats(index) {
     shot: 2,
     shotCooldown: final ? 1.7 : 2.8,
     bulletSpeed: final ? 205 : 175,
-    materials: final ? 6 : 3 + Math.floor(index / 3),
+    materials: final ? 12 : 6 + Math.floor(index / 3),
   };
 }
 export function skillStats(skill, level = skill.level || 1, build) {

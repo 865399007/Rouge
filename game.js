@@ -23,11 +23,12 @@ import {
   updatePresentation,
   preloadBuffIcons,
   updateBuffIcons,
+  drawStatusEffects,
   drawOrbit,
   drawArc,
 } from "./presentation.js";
 import Lt from "./vendor/phaser.js";
-import { Defenses } from "./defenses.js";
+import { Defenses, advancePickupFlight } from "./defenses.js";
 import { segmentCircleEntry } from "./geometry.js";
 import { updateMount } from "./mounts.js";
 import { Roll } from "./roll.js";
@@ -562,6 +563,7 @@ class ge extends Lt.Scene {
       (this.weaponLocked = !1),
       (this.upgradeLevels = {}),
       (this.skillGraphics = this.add.graphics().setDepth(3)),
+      (this.statusGraphics = this.add.graphics().setDepth(5.5)),
       (this.enemyTelegraphs = this.add.graphics().setDepth(6)),
       this.events.once("shutdown", () =>
         this.input.keyboard.removeAllListeners("keydown-SPACE"),
@@ -1198,6 +1200,7 @@ class ge extends Lt.Scene {
     const pos = this.defenses.spawn(
       410 * Math.cos(angle),
       410 * Math.sin(angle),
+      stat.r,
     );
     if (!pos) {
       this.nodes.delete(time);
@@ -1206,13 +1209,14 @@ class ge extends Lt.Scene {
     const sprite = this.add
       .image(pos.x, pos.y, "brute")
       .setDepth(5)
-      .setScale(stat.final ? 2.4 : 1.7)
+      .setScale(stat.final ? 3 : 2.15)
       .setTint(stat.final ? 0xe7bbad : 0xd6c293);
     this.enemies.push({ ...stat, s: sprite });
   }
   beginDefeat() {
     if (this.mode !== "play") return;
     this.mode = "dying";
+    drawStatusEffects(this);
     this.deathElapsed = 0;
     this.deathStartAngle = this.player.rotation;
     energyBurst(this, this.player.x, this.player.y, 0xf05241, 43, 10);
@@ -1349,7 +1353,7 @@ class ge extends Lt.Scene {
             : !0,
         )),
         (this.gems = this.gems.filter((t) =>
-          this.distance(this.player, t) > 1800 ? (t.destroy(), !1) : !0,
+          !t.pickupFlight && this.distance(this.player, t) > 1800 ? (t.destroy(), !1) : !0,
         ))),
       encounter?.count !== 0 && this.runTime < BALANCE.duration &&
         this.spawnClock <= 0 &&
@@ -1412,6 +1416,7 @@ class ge extends Lt.Scene {
         t.s.setTexture(t.normalTexture);
         t.flashUntil = 0;
       }
+      const chilled = t.chilledUntil > this.combat.time;
       if (t.frozenUntil > this.combat.time) {
         if (!t.flashUntil) t.s.setTint(0x99eaff);
         continue;
@@ -1443,7 +1448,8 @@ class ge extends Lt.Scene {
         t.gait += K * 3;
         const side = (t.sway || 0) * Math.sin(t.gait);
         const pulse = t.surge ? (Math.cos(t.gait) > 0.75 ? 1 + t.surge : 0.55) : 1;
-        const step = t.speed * (t.slow || 1) * K * pulse / (h * Math.hypot(1, side));
+        const chillSpeed = chilled ? (t.boss ? .8 : .55) : 1;
+        const step = t.speed * (t.slow || 1) * chillSpeed * K * pulse / (h * Math.hypot(1, side));
         this.defenses.move(t.s, (l - c * side) * step, (c + l * side) * step, t.r);
       }
       if (
@@ -1580,25 +1586,30 @@ class ge extends Lt.Scene {
       this.mode === "play")
     )
       for (let t = this.gems.length - 1; t >= 0; t--) {
-        let l = this.gems[t],
-          c = Lt.Math.Distance.Between(l.x, l.y, this.player.x, this.player.y);
-        if (
-          (c < BALANCE.player.pickup * this.build.pickupMultiplier &&
-            c > 0 &&
-            ((l.x += ((this.player.x - l.x) / c) * 320 * K),
-            (l.y += ((this.player.y - l.y) / c) * 320 * K)),
-          c < 23 &&
-            (pt.play("pickup"),
-            l.destroy(),
-            this.gems.splice(t, 1),
-            (this.xp += l.xp ?? 3),
-            this.sync(),
-            this.xp >= this.need))
-        ) {
+        const gem = this.gems[t];
+        if (gem.pickupFlight) {
+          if (!advancePickupFlight(gem, this.player, K)) continue;
+        } else {
+          const distance = this.distance(gem, this.player);
+          if (distance >= 23) {
+            if (distance < BALANCE.player.pickup * this.build.pickupMultiplier) {
+              gem.x += (this.player.x - gem.x) / distance * 320 * K;
+              gem.y += (this.player.y - gem.y) / distance * 320 * K;
+            }
+            continue;
+          }
+        }
+        pt.play("pickup");
+        this.xp += gem.xp ?? 3;
+        gem.destroy();
+        this.gems.splice(t, 1);
+        this.sync();
+        if (this.xp >= this.need) {
           this.upgrade();
           break;
         }
       }
+    drawStatusEffects(this);
     updateBuffIcons(this);
   }
 }

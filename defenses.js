@@ -9,6 +9,22 @@ const types = TOWER_TUNING;
 const halfTower = TOWER_RADIUS;
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
+function startPickupFlight(sprite, player) {
+  if (sprite.pickupFlight) return;
+  const distance = Math.hypot(player.x - sprite.x, player.y - sprite.y);
+  sprite.pickupFlight = { x: sprite.x, y: sprite.y, elapsed: 0,
+    duration: clamp(distance / 750, .28, .8) };
+}
+
+export function advancePickupFlight(sprite, player, dt) {
+  const flight = sprite.pickupFlight;
+  flight.elapsed += dt;
+  const t = Math.min(1, flight.elapsed / flight.duration);
+  sprite.x = flight.x + (player.x - flight.x) * t * t;
+  sprite.y = flight.y + (player.y - flight.y) * t * t - Math.sin(Math.PI * t) * 24;
+  return t === 1;
+}
+
 export class Defenses {
   constructor(scene) {
     this.scene = scene;
@@ -102,21 +118,22 @@ export class Defenses {
     sprite.x = clamp(sprite.x, padding, this.width - padding);
     sprite.y = clamp(sprite.y, padding, this.height - padding);
   }
-  spawn(dx, dy) {
+  spawn(dx, dy, radius = 55) {
+    const margin = Math.max(60, radius);
     const player = this.scene.player;
     const reflect = (pos, delta, size) =>
-      pos + delta < 60 || pos + delta > size - 60 ? pos - delta : pos + delta;
+      pos + delta < margin || pos + delta > size - margin ? pos - delta : pos + delta;
     const point = {
-      x: clamp(reflect(player.x, dx, this.width), 60, this.width - 60),
-      y: clamp(reflect(player.y, dy, this.height), 60, this.height - 60),
+      x: clamp(reflect(player.x, dx, this.width), margin, this.width - margin),
+      y: clamp(reflect(player.y, dy, this.height), margin, this.height - margin),
     };
     const clear = (p) =>
-      this.towers.every((tower) => !this.overlaps(tower, p, 55));
+      this.towers.every((tower) => !this.overlaps(tower, p, radius));
     if (clear(point)) return point;
     let closest = null,
       distance = Infinity;
-    for (let x = 60; x <= this.width - 60; x += 64)
-      for (let y = 60; y <= this.height - 60; y += 64) {
+    for (let x = margin; x <= this.width - margin; x += 64)
+      for (let y = margin; y <= this.height - margin; y += 64) {
         const candidate = { x, y },
           d = this.scene.distance(point, candidate);
         if (d < distance && clear(candidate)) {
@@ -178,10 +195,10 @@ export class Defenses {
     return tower;
   }
   drop(enemy) {
-    const value = materialDrop(enemy);
     if (enemy.lootDropped) return;
     enemy.lootDropped = true;
-    if ((enemy.elite || enemy.boss) && this.scene.build.random() < (enemy.boss ? 0.55 : 0.25)) {
+    const value = materialDrop(enemy, this.scene.build.random());
+    if (enemy.boss || (enemy.elite && this.scene.build.random() < 0.25)) {
       const type = mounts[Math.floor(this.scene.build.random() * mounts.length)];
       const sprite = this.scene.add.image(enemy.s.x - 20, enemy.s.y, "mount-" + type.id)
         .setDisplaySize(60, 42).setDepth(3);
@@ -289,31 +306,20 @@ export class Defenses {
       const drop = this.drops[i];
       const { sprite, value, kind } = drop,
         d = scene.distance(sprite, player);
-      if (!kind && (drop.flight || drop.magnetized || d < BALANCE.player.pickup * scene.build.pickupMultiplier)) {
-        drop.flight ??= { x: sprite.x, y: sprite.y, elapsed: 0,
-          duration: clamp(d / 550, 0.28, 0.8) };
-        const flight = drop.flight;
-        flight.elapsed += dt;
-        const t = Math.min(1, flight.elapsed / flight.duration);
-        const progress = t * t;
-        sprite.x = flight.x + (player.x - flight.x) * progress;
-        sprite.y = flight.y + (player.y - flight.y) * progress - Math.sin(Math.PI * t) * 24;
-        if (t < 1) continue;
+      if (!kind && d < BALANCE.player.pickup * scene.build.pickupMultiplier)
+        startPickupFlight(sprite, player);
+      if (sprite.pickupFlight || (kind && d < 24)) {
+        if (sprite.pickupFlight && !advancePickupFlight(sprite, player, dt)) continue;
         sprite.destroy();
         this.drops.splice(i, 1);
-        this.stock += value;
-        this.refresh();
-      } else if (kind && d < 24) {
-        sprite.destroy();
-        this.drops.splice(i, 1);
-        if (kind === "mount") {
+        if (!kind) {
+          this.stock += value;
+          this.refresh();
+        } else if (kind === "mount") {
           ride(scene, drop.type);
         } else if (kind === "magnet") {
-          for (const gem of scene.gems) gem.setPosition(player.x, player.y);
-          for (const other of this.drops) {
-            if (other.kind) other.sprite.setPosition(player.x, player.y);
-            else other.magnetized = true;
-          }
+          for (const gem of scene.gems) startPickupFlight(gem, player);
+          for (const other of this.drops) startPickupFlight(other.sprite, player);
         } else if (kind === "health") {
           scene.hp = Math.min(scene.maxHp, scene.hp + 25);
           scene.sync();
@@ -364,14 +370,16 @@ export class Defenses {
         .lineStyle(3, type.color)
         .lineBetween(muzzleX, muzzleY, impact.x, impact.y);
       shot.lineStyle(1.5, 0xfff4d3).lineBetween(muzzleX, muzzleY, impact.x, impact.y);
+      const blastRadius = type.blastRadius ? type.blastRadius + 5 * rank : 0;
       if (type.element === "ice") {
         for (let i=1; i<=4; i++) {
           const px = muzzleX + (impact.x-muzzleX)*i/5, py = muzzleY + (impact.y-muzzleY)*i/5;
           shot.fillStyle(type.color).fillTriangle(px-4,py,px,py-8,px+4,py).fillTriangle(px-4,py,px,py+5,px+4,py);
         }
-      } else if (type.element === "fire") {
-        shot.lineStyle(4,type.color,0.8).strokeCircle(impact.x,impact.y,45)
-          .lineStyle(2,0xffdc87).strokeCircle(impact.x,impact.y,66);
+      } else if (blastRadius) {
+        shot.fillStyle(type.color,.17).fillCircle(impact.x,impact.y,blastRadius)
+          .lineStyle(4,type.color,.85).strokeCircle(impact.x,impact.y,blastRadius)
+          .lineStyle(2,0xffdc87).strokeCircle(impact.x,impact.y,blastRadius*.64);
       } else {
         shot.lineStyle(2,type.color).strokeCircle(impact.x,impact.y,9);
       }
@@ -382,16 +390,19 @@ export class Defenses {
         duration: 65,
         yoyo: true,
       });
-      if (type === types[2]) {
+      if (blastRadius) {
         scene.impact(impact.x, impact.y, type.color, false, true);
         for (const enemy of [...scene.enemies])
-          if (scene.distance(impact, enemy.s) <= 70)
+          if (scene.distance(impact, enemy.s) <= blastRadius + (enemy.r || 0))
             scene.combat.damage(
               enemy,
               type.damage * (1 + 0.25 * rank) * scene.build.power,
               type.element,
             );
       } else {
+        if (type.element === "ice") {
+          target.chilledUntil = scene.combat.time + 1.65;
+        }
         scene.combat.damage(
           target,
           type.damage * (1 + 0.25 * rank) * scene.build.power,

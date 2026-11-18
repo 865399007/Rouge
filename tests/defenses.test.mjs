@@ -1,3 +1,4 @@
+import { advancePickupFlight } from "../defenses.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Defenses } from "../defenses.js";
@@ -18,7 +19,7 @@ const drawable = () => {
     },
   };
   for (const method of [
-    "setAngle",
+    "setAngle", "setDisplaySize",
     "setStrokeStyle",
     "setDepth",
     "clear",
@@ -48,7 +49,7 @@ function fixture() {
     mode: "play", build: { random: () => 0.9, pickupMultiplier: 1 }, enemies: [], gems: [],
     player: { x: 900, y: 100 },
     distance: (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
-    add: { rectangle: drawable, circle: drawable },
+    add: { image: drawable, rectangle: drawable, circle: drawable },
     damageNumbers: { add() {} },
     enemyTelegraphs: drawable(),
     tweens: { killTweensOf() {} },
@@ -61,10 +62,11 @@ function fixture() {
   d.towers.push(tower);
   return { d, tower };
 }
-test("精英与所有Boss掉材料，普通重装怪不掉材料", () => {
-  assert.equal(materialDrop(enemyStats("brute", 300)), 0);
-  assert.equal(materialDrop(eliteStats(25)), 1);
-  assert.equal(materialDrop(eliteStats(180)), 2);
+test("精英与所有Boss掉材料，普通怪有12%概率掉材料", () => {
+  assert.equal(materialDrop(enemyStats("brute", 300), .12), 0);
+  assert.equal(materialDrop(enemyStats("bug", 0), .119), 1);
+  assert.equal(materialDrop(eliteStats(25)), 3);
+  assert.equal(materialDrop(eliteStats(180)), 4);
   assert.ok(eliteStats(25).hp > enemyStats("brute", 25).hp);
   for (let i = 0; i < 9; i++) assert.ok(materialDrop(bossStats(i)) >= 3);
 });
@@ -74,11 +76,12 @@ test("击杀掉落仅结算一次，最终Boss立即入账", () => {
   d.drop(elite);
   d.drop(elite);
   assert.equal(d.drops.length, 1);
-  assert.equal(d.drops[0].value, 1);
+  assert.equal(d.drops[0].value, 3);
   const final = { ...bossStats(8), s: elite.s };
   d.drop(final);
   d.drop(final);
-  assert.equal(d.stock, 6);
+  assert.equal(d.drops.filter(drop => drop.kind === "mount").length, 1);
+  assert.equal(d.stock, 12);
 });
 test("塔升级刷新寿命，材料不足保留原状态，满级永久", () => {
   const {d, tower} = fixture();
@@ -115,11 +118,18 @@ test("磁铁收集远处的经验、材料和血包，治疗不超上限", () =>
   d.drops.push({sprite:sprite(0), kind:"health"}, {sprite:sprite(40),value:3},
     {sprite:sprite(900),kind:"magnet"});
   d.update(1/30);
-  assert.equal(scene.gems[0].x, 900);
-  assert.equal(scene.hp, 100);
+  const gem = scene.gems[0];
+  assert.equal(gem.x, 0);
+  assert.equal(advancePickupFlight(gem, scene.player, .3), false);
+  assert.ok(gem.x > 0 && gem.x < 900);
+  scene.player.x += 35;
+  assert.equal(advancePickupFlight(gem, scene.player, .51), true);
+  assert.equal(gem.x, scene.player.x);
+  assert.equal(scene.hp, 90);
   assert.equal(d.stock, 0);
-  assert.ok(d.drops[0].sprite.x > 40 && d.drops[0].sprite.x < 900);
+  assert.ok(d.drops[1].sprite.x > 40 && d.drops[1].sprite.x < 900);
   for (let i = 0; i < 25; i++) d.update(1/30);
+  assert.equal(scene.hp, 100);
   assert.equal(d.stock, 3);
   assert.equal(d.drops.length, 0);
 });

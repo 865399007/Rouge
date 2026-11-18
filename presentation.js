@@ -75,6 +75,51 @@ export function preloadBuffIcons(scene) {
   }
 }
 
+export function drawStatusEffects(scene) {
+  const g = scene.statusGraphics.clear();
+  const time = scene.combat.time;
+  if (scene.mount?.shield > 0) {
+    const {x, y, displayHeight} = scene.player;
+    const height = Math.max(64, displayHeight + 22);
+    const width = height * .79;
+    const pulse = .5 + .5 * Math.sin(time * 4);
+    g.fillStyle(0x6debe8, .09 + pulse*.04).fillEllipse(x,y,width,height)
+      .lineStyle(7,0x5fe8dc,.16).strokeEllipse(x,y,width,height)
+      .lineStyle(2,0xbdfff3,.8).strokeEllipse(x,y,width,height);
+    for (let i = 0; i < 3; i++) {
+      const angle = time * 1.3 + i * Math.PI * 2 / 3;
+      g.fillStyle(0xeaffff,.95).fillCircle(x+Math.cos(angle)*width/2,
+        y+Math.sin(angle)*height/2,2.4);
+    }
+  }
+  for (const enemy of scene.enemies) {
+    const {x,y,active} = enemy.s;
+    if (!active) continue;
+    const r = enemy.r;
+    const frozen = (enemy.frozenUntil || 0) - time;
+    const chilled = Math.max(enemy.chilledUntil || 0, enemy.status?.ice || 0) - time;
+    if (frozen > 0) {
+      const alpha = Math.min(1, frozen/.12);
+      g.fillStyle(0x96ecff,.16*alpha).fillEllipse(x,y,r*1.9,r*2);
+      for (let i = -1; i <= 1; i++) {
+        const cx = x+i*r*.52, base = y+r*.72, tip = base-r*(i ? 1 : 1.65);
+        g.fillStyle(0x69c8ed,.68*alpha).fillTriangle(cx-r*.23,base,cx,tip,cx+r*.23,base)
+          .lineStyle(1.8,0xe6ffff,.95*alpha).lineBetween(cx-r*.23,base,cx,tip)
+          .lineBetween(cx,tip,cx+r*.07,base);
+      }
+    } else if (chilled > 0) {
+      const alpha = Math.min(1, chilled/.18);
+      g.lineStyle(2,0x85daff,.72*alpha).strokeEllipse(x,y+r*.46,r*2,r*.52);
+      for (let i = 0; i < 4; i++) {
+        const a = time*3 + x*.004 + i*Math.PI/2;
+        const px = x+Math.cos(a)*r*.92, py = y+Math.sin(a)*r*.48;
+        g.lineStyle(2,0xb7f5ff,.9*alpha).lineBetween(px-3,py,px+3,py)
+          .lineBetween(px,py-3,px,py+3);
+      }
+    }
+  }
+}
+
 export function updateBuffIcons(scene) {
   const effects = Object.entries(scene.build.attributes)
     .filter(([, level]) => level > 0)

@@ -78,7 +78,7 @@ const assert = require("node:assert/strict");
     s.hit(elite, 100);
     const boss = __enemy(1080, 1000, { ...__tuning.bossStats(0), hp: 1 });
     s.hit(boss, 100);
-    const values = s.defenses.drops.map((d) => d.value);
+    const values = s.defenses.drops.map((d) => d.kind || d.value);
     for (let i = 0; i < 20; i++) s.defenses.update(1 / 30);
     return {
       ordinaryDrops,
@@ -89,8 +89,8 @@ const assert = require("node:assert/strict");
   });
   assert.deepEqual(loot, {
     ordinaryDrops: 0,
-    values: [1, 3],
-    stock: 24,
+    values: [3, "mount", 6],
+    stock: 29,
     left: 0,
   });
   const spawning = await page.evaluate(() => {
