@@ -17,15 +17,18 @@ npm run dev
 - WASD / 方向键移动；空格暂停、继续。
 - 触屏按住画面左侧拖动，出现浮动摇杆。
 - 按住右侧塔型，在出现的圆盘内拖动，松开建造。绿色预览可建，红色预览不可建；外圈表示攻击范围。
-- 初始 3 材料；首领死亡掉落 4 材料。三种塔消耗分别为 3 / 5 / 7。
-- 选择 1 个初始技能；升级可增加或强化技能，最多装备 4 种，每种最高 Lv.5。
+- 初始 3 材料（机械师为 4）；普通首领掉落 3–5 材料。三种塔消耗分别为 3 / 5 / 7。
+- 开局从游侠、破阵者、炼焰师、机械师、铁卫中选择职业；职业武器自动攻击且不占技能槽。升级时选择技能或属性，最多 4 种技能、每种 5 级；高阶要求角色 Lv.3 / 6 / 10 / 15。
 
 ## 当前代码入口
 
 | 文件 | 职责 |
 | --- | --- |
 | `index.html`、`style.css` | 页面、HUD、响应式菜单 |
-| `game.js` | 场景、移动、战斗、音频、升级与胜负 |
+| `game.js` | 场景、移动、音频、升级与胜负 |
+| `balance.js`、`progression.js` | 统一数值、经验曲线、升级选择与属性 |
+| `classes.js`、`combat.js` | 五职业武器、十种技能、状态和持续领域 |
+| `damage-numbers.js` | 实际伤害跳字、合并和数量限制 |
 | `vendor/phaser.js` | 从原运行包分离的引擎，保留原许可证说明 |
 | `presentation.js` | SVG 加载清单、菜单、地面、战斗表现 |
 | `battle-skills.js` | 10 种技能定义、技能栏与施法特效 |
@@ -41,13 +44,14 @@ npm run dev
 npm test
 ```
 
-运行 6 个圆形碰撞回归测试，覆盖圆角空隙、高速位移、沿圆周滑动、重叠恢复、边界和塔间通道。
+运行 21 项回归测试，覆盖经验、职业基础属性、技能门槛、升级收益、圆形碰撞、伤害跳字、首领冻结抗性与地雷伤害。
 
 开发服务启动后，可运行浏览器检查：
 
 ```sh
 npm run test:browser
 node scripts/skill-smoke.cjs
+node scripts/combat-test.cjs
 ```
 
 浏览器脚本需要 Playwright 和本机 Microsoft Edge。优先查找本项目 Playwright，其次使用 Codex 附带运行库；也可通过 `PLAYWRIGHT_MODULE_PATH` 指定模块路径。其他机器可先执行 `npm install --no-save playwright`。
@@ -56,4 +60,6 @@ node scripts/skill-smoke.cjs
 
 `?debug` 仅在显式添加时暴露 `window.__game`，供自动化检查调用。普通入口不暴露此对象。
 
-项目分析与后续优先级见 [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md)。
+本次数值方案、职业差异和模拟限制见 [BALANCE_NOTES.md](./BALANCE_NOTES.md)。
+
+早期版本的项目分析与后续优先级见 [PROJECT_ANALYSIS.md](./PROJECT_ANALYSIS.md)。

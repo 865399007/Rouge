@@ -1,33 +1,6 @@
+import { BALANCE, TOWER_TUNING } from "./balance.js";
 import { TOWER_RADIUS, circlesOverlap, moveCircle } from "./geometry.js";
-const types = [
-  {
-    name: "速射塔",
-    icon: "➶",
-    cost: 3,
-    color: 0xf4c875,
-    range: 270,
-    cooldown: 0.55,
-    damage: 12,
-  },
-  {
-    name: "冰晶塔",
-    icon: "❄",
-    cost: 5,
-    color: 0x94e4ff,
-    range: 220,
-    cooldown: 2.1,
-    damage: 15,
-  },
-  {
-    name: "爆裂塔",
-    icon: "✹",
-    cost: 7,
-    color: 0xff9468,
-    range: 240,
-    cooldown: 2.8,
-    damage: 36,
-  },
-];
+const types = TOWER_TUNING;
 const halfTower = TOWER_RADIUS;
 const reach = 200;
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
@@ -52,7 +25,7 @@ export class Defenses {
       )
       .setStrokeStyle(8, 0xe4ce8f)
       .setDepth(0);
-    this.stock = 3;
+    this.stock = BALANCE.initialMaterials;
     this.towers = [];
     this.drops = [];
     this.preview = scene.add.graphics().setDepth(12);
@@ -251,7 +224,7 @@ export class Defenses {
       .setStrokeStyle(2, 0x725527)
       .setDepth(3);
     this.confine(sprite, 12);
-    this.drops.push({ sprite, value: 4 });
+    this.drops.push({ sprite, value: enemy.materials ?? 3 });
   }
   update(dt) {
     const scene = this.scene,
@@ -265,7 +238,7 @@ export class Defenses {
         this.drops.splice(i, 1);
         this.stock += value;
         this.refresh();
-      } else if (d < 110) {
+      } else if (d < BALANCE.player.pickup * scene.build.pickupMultiplier) {
         sprite.x += ((player.x - sprite.x) / d) * 300 * dt;
         sprite.y += ((player.y - sprite.y) / d) * 300 * dt;
       }
@@ -285,7 +258,7 @@ export class Defenses {
         }
       }
       if (!target) continue;
-      tower.remaining = type.cooldown;
+      tower.remaining = type.cooldown * (1 - scene.build.haste);
       const impact = { x: target.s.x, y: target.s.y };
       const angle = Math.atan2(impact.y - y, impact.x - x);
       tower.barrel.setRotation(angle);
@@ -314,11 +287,17 @@ export class Defenses {
         scene.impact(impact.x, impact.y, type.color, false, true);
         for (const enemy of [...scene.enemies])
           if (scene.distance(impact, enemy.s) <= 70)
-            scene.hit(enemy, type.damage, type.color);
+            scene.combat.damage(
+              enemy,
+              type.damage * scene.build.power,
+              type.element,
+            );
       } else {
-        if (type === types[1])
-          target.frozenUntil = scene.combat.time + (target.boss ? 0.3 : 1);
-        scene.hit(target, type.damage, type.color);
+        scene.combat.damage(
+          target,
+          type.damage * scene.build.power,
+          type.element,
+        );
       }
     }
   }

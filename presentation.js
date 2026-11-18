@@ -1,5 +1,16 @@
-// Original vector art and presentation layer. Combat rules remain in game.js.
+import { BALANCE } from "./balance.js";
+// Original vector art and presentation layer.
 export const artKeys = [
+  "hero-ranger",
+  "hero-vanguard",
+  "hero-pyromancer",
+  "hero-engineer",
+  "hero-warden",
+  "axe",
+  "crossbow",
+  "fire-staff",
+  "shield",
+  "deployer",
   "potato",
   "bug",
   "brute",
@@ -98,6 +109,11 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
       button.dataset.element = choice.element || "supply";
       const symbol = el("span", "choice-icon");
       symbol.innerHTML = icon(choice.id);
+      if (choice.job) {
+        button.classList.add("class-card");
+        symbol.classList.add("class-portrait");
+        symbol.innerHTML = `<img src="./assets/hero-${choice.job.id}.svg" alt=""><img class="class-weapon" src="./assets/${choice.job.texture}.svg" alt="${choice.job.weapon}">`;
+      }
       button.append(
         el("span", "card-index", String(i + 1).padStart(2, "0")),
         symbol,
@@ -113,7 +129,11 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
         el(
           "span",
           "choice-cta",
-          choice.levelText ? "选择升级 ↗" : "装备出发 ↗",
+          choice.job
+            ? "以此职业出发 ↗"
+            : choice.levelText
+              ? "选择成长 ↗"
+              : "装备出发 ↗",
         ),
       );
     else button.append(el("span", "action-arrow", "→"));
@@ -128,7 +148,7 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
     "menu-footer",
     cards
       ? choices.length > 3
-        ? "选择一个初始技能 · 战斗中可升级至 Lv.5 · 最多装备 4 种"
+        ? "职业武器不占技能槽 · 最多装备 4 种技能 · 技能高阶需要角色等级解锁"
         : "升级期间战斗暂停 · 选择后继续行动"
       : "W A S D  移动    /    SPACE  暂停    /    触屏拖动左侧移动",
   );
@@ -266,6 +286,12 @@ export function updatePresentation(scene, moving) {
     .toString()
     .padStart(2, "0")}`;
   const boss = scene.enemies.find((e) => e.boss);
+  const next = scene.bossTimes.find((t) => !scene.nodes.has(t));
+  const warning = document.getElementById("boss-warning");
+  warning.hidden =
+    next === undefined || next - scene.runTime > BALANCE.bossWarning;
+  if (!warning.hidden)
+    warning.textContent = `${next === 540 ? "最终首领" : "街区首领"}将在 ${Math.max(0, Math.ceil(next - scene.runTime))} 秒后抵达`;
   const bossHud = document.getElementById("boss-hud");
   bossHud.hidden = !boss;
   if (boss) {

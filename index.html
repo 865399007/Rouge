@@ -30,12 +30,13 @@
             <div class="vitals-bars">
               <div class="health-label">
                 <span
-                  >守夜人 <strong>LV.<b id="level">1</b></strong></span
+                  ><span id="job-name">守夜人</span>
+                  <strong>LV.<b id="level">1</b></strong></span
                 ><b id="health">100 / 100</b>
               </div>
               <div class="bar"><i id="hp"></i></div>
               <div class="health-label xp-label">
-                <span>进化经验</span><b id="xp-label">0 / 18</b>
+                <span>进化经验</span><b id="xp-label">0 / 42</b>
               </div>
               <div class="bar xp"><i id="xp"></i></div>
             </div>
@@ -64,6 +65,7 @@
             </details>
             <button id="pause">Ⅱ 暂停</button>
           </div>
+          <div id="boss-warning" aria-live="polite" hidden></div>
           <div id="boss-hud" hidden>
             <strong>街区暴君</strong><span></span>
             <div class="bar"><i></i></div>
@@ -75,7 +77,7 @@
             aria-label="已装备技能"
           ></section>
           <section class="stats hud-panel">
-            <span>攻击 <b id="damage">18</b></span
+            <span>增伤 <b id="damage">0%</b></span
             ><span>移速 <b id="speed">210</b></span
             ><span>击败 <b id="kills">0</b></span>
           </section>

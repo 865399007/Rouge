@@ -1,3 +1,4 @@
+import { SKILL_TUNING } from "./balance.js";
 import { icon } from "./presentation.js";
 // Each equipped skill uses the same slots and upgrade rules.
 export const skills = [
@@ -19,7 +20,7 @@ export const skills = [
     "nova",
     34,
     3.8,
-    "向四周释放冰晶，冻结近敌 1.3 秒",
+    "向四周释放冰晶，冻结近敌 0.85 秒，首领抗冻结",
   ],
   [
     "venom",
@@ -59,7 +60,7 @@ export const skills = [
     "pull",
     22,
     6,
-    "留下持续四秒的风眼，将附近敌人拉向中心",
+    "留下持续三秒的风眼，将附近敌人拉向中心",
   ],
   [
     "siphon",
@@ -69,7 +70,7 @@ export const skills = [
     "drain",
     18,
     6,
-    "移动吸血领域每次汲取敌人时恢复生命",
+    "持续三秒，每半秒汲取近敌并恢复 0.6 生命",
   ],
   [
     "orbit",
@@ -99,7 +100,7 @@ export const skills = [
     "trap",
     100,
     3,
-    "脚下布雷，敌人靠近时引爆范围震荡",
+    "脚下布雷，保留八秒；敌人靠近时全额爆炸一次",
   ],
 ].map(([id, name, icon, element, type, base, cd, description]) => ({
   id,
@@ -110,6 +111,7 @@ export const skills = [
   base,
   cd,
   description,
+  ...SKILL_TUNING[id],
   maxLevel: 5,
 }));
 

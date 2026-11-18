@@ -53,3 +53,21 @@ svg('blade',56,42,'''<path d="m6 33 14-13" stroke="#816747" stroke-width="8"/><p
 for name,color,inside in [('tower-rapid','#e0b65c','<path d="M29 28h15v18H29Z" fill="#796749"/>'),('tower-frost','#a4d8de','<path d="m36 17 11 17-11 17-11-17Z" fill="#bce6e7"/><path d="M36 18v32m-10-16h20" stroke="#649aa2" stroke-width="2"/>'),('tower-blast','#de8866','<circle cx="36" cy="35" r="12" fill="#da8663"/><circle cx="36" cy="35" r="5" fill="#523f32"/>')]:
  svg(name,72,80,f'''<ellipse cx="36" cy="71" rx="33" ry="7" opacity=".2" stroke="none"/><circle cx="36" cy="43" r="31" fill="#6c6c59"/><circle cx="36" cy="37" r="30" fill="{color}"/><circle cx="36" cy="37" r="23" fill="#ded1a9"/><circle cx="36" cy="37" r="18" fill="#6d7768"/>{inside}<path d="M16 18h1m39 0h1M15 56h1m39 0h1" stroke="#f6edcb" stroke-width="4"/>''')
 print('Created original SVG art:',len(list(out.glob('*.svg'))))
+# Distinct class silhouettes: light hood, horned axe helm, pointed mage hat,
+# engineering goggles and a closed guard visor. All remain original art.
+base=out.joinpath('potato.svg').read_text(encoding='utf-8')
+looks={
+ 'ranger':('#6d8b61','#677f60','<path d="M15 20Q35-2 58 19l-4-10Q33-4 18 9Z" fill="#648158"/><path d="M48 9l6-8" stroke="#d6c995"/>'),
+ 'vanguard':('#9d6250','#866052','<path d="M15 19 9 5l14 5m29 9 11-14-17 5" fill="#d7c5a0"/><path d="M22 12h28" stroke="#ababa0" stroke-width="6"/>'),
+ 'pyromancer':('#9577a1','#797098','<path d="m12 20 15-5 10-16 11 17 15 6Z" fill="#7f6395"/><path d="m35 7 5 7" stroke="#d5b974"/>'),
+ 'engineer':('#c6a356','#777d65','<path d="M15 20q0-17 22-16 20 0 21 17Z" fill="#c4a150"/><path d="M35 5v12" stroke="#7c673c"/><rect x="17" y="19" width="17" height="10" rx="3" fill="#99bbb9"/><rect x="37" y="19" width="17" height="10" rx="3" fill="#99bbb9"/>'),
+ 'warden':('#758b99','#718594','<path d="M17 22q-1-17 20-16 21 1 19 19l-4 19H22Z" fill="#95a7ab"/><path d="M23 26h27v9H23Z" fill="#3c484b"/><path d="M35 6v34" stroke="#d8d8b9" stroke-width="3"/>')}
+for name,(hat,coat,extra) in looks.items():
+ body=base.replace('#cb6549',hat).replace('#77836a',coat).replace('</g></svg>',extra+'</g></svg>')
+ out.joinpath('hero-'+name+'.svg').write_text(body,encoding='utf-8')
+svg('axe',56,48,'<path d="m8 39 28-28" stroke="#715340" stroke-width="8"/><path d="M25 9 34 2q2 10 17 13l-4 15q-16-2-22-21Z" fill="#b7c4bf"/><path d="m30 8 13 17" stroke="#edf2d9" stroke-width="2"/>')
+svg('shield',42,48,'<path d="M5 8 21 3l16 5v19L21 44 5 27Z" fill="#98afbb"/><path d="M11 12 21 9l10 3v13L21 36 11 25Z" fill="#d8d5aa"/><path d="M21 10v24m-9-16h18" stroke="#6f8390" stroke-width="4"/>')
+svg('deployer',46,32,'<rect x="3" y="6" width="33" height="21" rx="5" fill="#7d9585"/><path d="M35 10h8v10h-8" fill="#d7c281"/><path d="M8 11h19v10H8Z" fill="#c9e8a2"/><path d="m12 16 3-3 4 6 4-5" stroke-width="2" fill="none"/>')
+
+svg('crossbow',56,38,'<path d="M5 13h37v6H5Zm0 11h37v6H5Z" fill="#a28757"/><path d="M24 2q15 16 0 34" fill="none" stroke="#738378" stroke-width="5"/><path d="m24 3 14 15-14 16" fill="none" stroke="#d5c48d" stroke-width="1.5"/><path d="M31 16h20m-20 10h20m-4-14 6 4-6 3m0 3 6 4-6 3" stroke="#d8ddd0" stroke-width="2"/>')
+svg('fire-staff',46,30,'<path d="M3 19h27" stroke="#755544" stroke-width="7"/><path d="M31 26q-12-8 2-21l1 7 7-10q11 19-2 24Z" fill="#e69758"/><path d="M34 23q-6-5 2-11 7 8 1 11Z" fill="#f9dc8c" stroke-width="2"/>')

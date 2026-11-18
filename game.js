@@ -1,4 +1,16 @@
 import {
+  BALANCE,
+  xpToNext,
+  spawnInterval,
+  enemyStats,
+  enemyKind,
+  bossStats,
+} from "./balance.js";
+import { Build, upgradeDescription } from "./progression.js";
+import { Combat } from "./combat.js";
+import { CLASSES, classById, updateClassWeapon } from "./classes.js";
+import { DamageNumbers } from "./damage-numbers.js";
+import {
   artKeys,
   renderPanel,
   drawGround,
@@ -410,586 +422,15 @@ class ne {
 const Nt = [],
   zt = [],
   Xt = [],
-  Ht = (st) => Math.ceil(12 + 5 * st + 0.65 * st * st);
+  Ht = xpToNext;
 function ue(st) {
   return () => (
     (st = (Math.imul(st, 1664525) + 1013904223) >>> 0),
     st / 4294967296
   );
 }
-class fe {
-  constructor(seed = 1789) {
-    this.active = [];
-    this.random = ue(seed);
-  }
-  add(id) {
-    const existing = this.active.find((skill) => skill.id === id);
-    if (existing) {
-      if (existing.level >= existing.maxLevel) return false;
-      existing.level++;
-      return true;
-    }
-    const skill = Et.find((skill) => skill.id === id);
-    if (!skill || this.active.length >= 4) return false;
-    this.active.push({ ...skill, level: 1, remaining: 0 });
-    return true;
-  }
-  options() {
-    const choices = [];
-    for (const skill of Et) {
-      const equipped = this.active.find((item) => item.id === skill.id);
-      if (equipped ? equipped.level < skill.maxLevel : this.active.length < 4)
-        choices.push({ ...skill, level: (equipped?.level || 0) + 1 });
-    }
-    const result = [];
-    while (choices.length && result.length < 3) {
-      result.push(
-        ...choices.splice(Math.floor(this.random() * choices.length), 1),
-      );
-    }
-    if (result.length < 3)
-      result.push({
-        id: "heal_supply",
-        name: "战地补给",
-        level: 1,
-        description: "恢复 30 生命",
-      });
-    return result;
-  }
-  // Existing combat formulas use zero for unequipped passive modifiers.
-  p() {
-    return 0;
-  }
-}
-class de {
-  constructor(b = 120) {
-    ((this.size = b), (this.cells = new Map()));
-  }
-  rebuild(b) {
-    this.cells.clear();
-    for (const Y of b) {
-      const K = `${Math.floor(Y.s.x / this.size)},${Math.floor(Y.s.y / this.size)}`;
-      (this.cells.has(K) || this.cells.set(K, []), this.cells.get(K).push(Y));
-    }
-  }
-  query(b, Y, K) {
-    const Q = [];
-    for (
-      let Z = Math.floor((b - K) / this.size);
-      Z <= Math.floor((b + K) / this.size);
-      Z++
-    )
-      for (
-        let p = Math.floor((Y - K) / this.size);
-        p <= Math.floor((Y + K) / this.size);
-        p++
-      )
-        for (const S of this.cells.get(`${Z},${p}`) || [])
-          S.s.active &&
-            Math.hypot(S.s.x - b, S.s.y - Y) <= K + S.r &&
-            Q.push(S);
-    return Q;
-  }
-}
-function ve() {
-  const st = [...Et, ...Nt, ...zt, ...Xt],
-    b = new Set(st.map((Y) => Y.id));
-  if (b.size !== st.length) throw Error("Duplicate skill IDs");
-  for (const Y of [...zt, ...Xt])
-    if (
-      !Y.ingredients.every((K) => b.has(K)) ||
-      (Y.passive && !b.has(Y.passive))
-    )
-      throw Error("Invalid recipe");
-  return !0;
-}
-ve();
-const Kt = {
-  fire: 16755301,
-  ice: 11003384,
-  lightning: 8698623,
-  poison: 12179816,
-  physical: 14800579,
-  wind: 9557682,
-  shadow: 11638999,
-  holy: 16771235,
-  mechanical: 11257552,
-  time: 14006252,
-};
-class ce {
-  constructor(b) {
-    ((this.s = b),
-      (this.hash = new de()),
-      (this.time = 0),
-      (this.zones = []),
-      (this.shield = 0),
-      (this.revived = !1),
-      (this.killStreak = 0),
-      (this.cloneUntil = 0),
-      (this.lastCast = null),
-      (this.emergencyAt = 0));
-  }
-  update(b) {
-    const Y = this.s,
-      K = Y.build;
-    ((this.time += b),
-      this.time - (this.lastKill || 0) > 3 && (this.killStreak = 0),
-      this.hash.rebuild(Y.enemies));
-    const Q = Y.skillGraphics;
-    Q.clear();
-    for (const Z of [...Y.enemies])
-      (Z.status ?? (Z.status = {}),
-        Z.reactions ?? (Z.reactions = {}),
-        Z.dotAt < this.time &&
-          ((Z.dotAt = this.time + 1),
-          Z.status.fire > this.time && this.damage(Z, 4, "fire", !0),
-          Z.status.poison > this.time &&
-            this.damage(Z, 3 * (Z.poison || 1), "poison", !0)),
-        (Z.slow =
-          Z.status.ice > this.time || Z.status.time > this.time
-            ? Z.boss
-              ? 0.8
-              : 0.6
-            : 1));
-    for (const Z of K.active) {
-      Z.remaining = Math.max(0, Z.remaining - b);
-      const p = Z.ingredients ? 5 : Z.level,
-        S = [1, 1.25, 1.45, 1.75, 2.1][p - 1],
-        t = (70 + p * 12) * (1 + K.p(8) * 0.12),
-        l = Z.base * (S + (S - 1) * K.p(39) * 0.08),
-        c = Kt[Z.element];
-      if (Z.type === "orbit") {
-        const e = Z.id === "evolved_6" ? 6 : 2 + p;
-        for (let s = 0; s < e; s++) {
-          const a = this.time * 1.8 + (s * Math.PI * 2) / e,
-            i = Y.player.x + Math.cos(a) * t,
-            o = Y.player.y + Math.sin(a) * t;
-          if ((Q.fillStyle(c, 0.9), drawOrbit(Q, i, o, c, a), Z.remaining <= 0))
-            for (const u of this.hash.query(i, o, 12))
-              this.damage(u, l, Z.element);
-        }
-        Z.remaining <= 0 && (Z.remaining = 0.3);
-        continue;
-      }
-      if (Z.remaining > 0) continue;
-      let h = this.hash.query(Y.player.x, Y.player.y, 650);
-      (h.sort((e, s) => Y.distance(Y.player, e.s) - Y.distance(Y.player, s.s)),
-        ["strike"].includes(Z.type) && h.sort((e, s) => s.hp - e.hp),
-        Z.type === "execute" && h.sort((e, s) => e.hp - s.hp));
-      const r = h[0];
-      if (!r && !["shield", "heal", "teleport", "clone"].includes(Z.type))
-        continue;
-      const n = () => this.cast(Z, r, l, t, c);
-      (n(),
-        Z.type !== "echo" &&
-          Z.type !== "clone" &&
-          ((this.lastCast = { k: Z, damage: l }),
-          this.cloneUntil > this.time && this.cast(Z, r, l * 0.35, t, c)),
-        K.random() < 0.08 * K.p(35) && n(),
-        (Z.remaining = Math.max(
-          0.15,
-          (Z.cd /
-            (1 +
-              Math.min(
-                1,
-                K.p(2) * 0.06 + Math.min(10, this.killStreak) * K.p(36) * 0.01,
-              ))) *
-            (p >= 4 ? 0.9 : 1) *
-            (Z.element === "mechanical" ? 1 - K.p(38) * 0.1 : 1),
-        )));
-    }
-    this.zones = this.zones.filter((Z) => {
-      if (
-        ((Z.life -= b), Z.life <= 0 || !K.active.some((t) => t.id === Z.owner))
-      )
-        return !1;
-      const p = Z.self ? Y.player.x : Z.x,
-        S = Z.self ? Y.player.y : Z.y;
-      if (Z.kind === "trap") {
-        Q.lineStyle(3, Z.color).strokeTriangle(
-          p,
-          S - 12,
-          p + 12,
-          S + 9,
-          p - 12,
-          S + 9,
-        );
-      }
-      if (
-        (Q.fillStyle(Z.color, 0.12),
-        Q.fillCircle(p, S, Z.r),
-        Q.lineStyle(2, Z.color, 0.5),
-        Q.strokeCircle(p, S, Z.r),
-        (Z.tick -= b),
-        Z.tick <= 0)
-      ) {
-        Z.tick = 0.5;
-        let t = this.hash.query(p, S, Z.kind === "turret" ? 400 : Z.r);
-        (Z.kind === "turret" || Z.kind === "storm") && (t = t.slice(0, 1));
-        for (const l of t) {
-          if (Z.kind === "drain") {
-            const tether = Y.add.graphics().setDepth(7);
-            tether.lineStyle(2, Z.color, 0.8).lineBetween(p, S, l.s.x, l.s.y);
-            Y.effect(tether, 0.22);
-          }
-          if (Z.pull) {
-            const c = Math.max(1, Y.distance({ x: p, y: S }, l.s));
-            Y.defenses.move(
-              l.s,
-              ((p - l.s.x) / c) * 20,
-              ((S - l.s.y) / c) * 20,
-              l.r,
-            );
-          }
-          (Z.kind === "slow"
-            ? (l.status ?? (l.status = {}), (l.status.time = this.time + 1))
-            : this.damage(
-                l,
-                Z.damage * 0.5 * (Z.kind === "turret" ? 1 + K.p(37) * 0.15 : 1),
-                Z.element,
-              ),
-            Z.kind === "trap" &&
-              ((Z.life = 0), Y.impact(p, S, Z.color, false, true)));
-        }
-        Z.heal &&
-          t.length &&
-          (Y.hp = Math.min(Y.maxHp, Y.hp + 1 * (1 + K.p(26) * 0.15)));
-      }
-      return !0;
-    });
-  }
-  cast(b, Y, K, Q, Z) {
-    const p = this.s,
-      S = p.build,
-      t = (r, n, e = Q, s = K) => {
-        p.impact(r, n, Z, !1, !1);
-        for (const a of this.hash.query(r, n, e)) this.damage(a, s, b.element);
-      },
-      l = b.type,
-      c = b.level;
-    castArt(p, b, Y, Q, Z);
-    if (
-      (pt.play(
-        l === "chain"
-          ? "chain"
-          : l === "cone"
-            ? "blade"
-            : b.element === "fire"
-              ? "fire"
-              : "pea",
-      ),
-      b.id.startsWith("fusion_") && !b.composite)
-    ) {
-      for (const r of b.ingredients) {
-        const n = Et.find((e) => e.id === r);
-        this.cast(
-          { ...n, id: b.id, level: 5, composite: !0 },
-          Y,
-          K * 0.7,
-          Q,
-          Z,
-        );
-      }
-      return;
-    }
-    if (b.id.startsWith("evolved_") && !b.evolvedCast) {
-      const r = ["evolved_1", "evolved_8", "evolved_17", "evolved_18"].includes(
-        b.id,
-      )
-        ? 3
-        : b.id === "evolved_2"
-          ? 5
-          : 1;
-      if (r > 1) {
-        for (let n = 0; n < r; n++)
-          this.cast({ ...b, evolvedCast: !0 }, Y, K / r, Q, Z);
-        return;
-      }
-    }
-    if (l === "shield") {
-      this.shield = Math.max(
-        this.shield,
-        b.base * (1 + (c - 1) * 0.25) * (1 + S.p(26) * 0.15),
-      );
-      return;
-    }
-    if (l === "teleport") {
-      p.hp < p.maxHp * 0.35 &&
-        ((p.player.x += 180), (p.player.y -= 120), (p.invincible = 1));
-      return;
-    }
-    if (l === "clone") {
-      this.cloneUntil = this.time + 6;
-      return;
-    }
-    if (l === "echo") {
-      this.lastCast &&
-        this.cast(
-          { ...this.lastCast.k, id: b.id },
-          Y,
-          this.lastCast.damage * 0.5,
-          Q,
-          Z,
-        );
-      return;
-    }
-    if (l === "chain") {
-      let r = p.player;
-      const n = new Set();
-      for (let e = 0; e < (b.id === "evolved_7" ? 12 : 4 + c + S.p(9)); e++) {
-        const s = this.hash
-          .query(r.x, r.y, e ? 180 : 650)
-          .filter((o) => !n.has(o))
-          .sort((o, u) => p.distance(r, o.s) - p.distance(r, u.s))[0];
-        if (!s) break;
-        n.add(s);
-        const a = { x: s.s.x, y: s.s.y },
-          i = p.add.graphics().setDepth(8);
-        (i.lineStyle(3, Z),
-          drawArc(i, r, a, Z),
-          p.effect(i, 0.18),
-          this.damage(s, K * 0.85 ** e, b.element),
-          b.id === "fusion_1" && t(a.x, a.y, 75, K * 0.5),
-          (r = a));
-      }
-      return;
-    }
-    if (l === "plague") return;
-    if (
-      [
-        "ground",
-        "slow",
-        "pull",
-        "heal",
-        "turret",
-        "trap",
-        "storm",
-        "drain",
-      ].includes(l)
-    ) {
-      (this.zones.length >= 24 && this.zones.shift(),
-        this.zones.push({
-          owner: b.id,
-          x:
-            l === "trap"
-              ? p.player.x
-              : ((Y == null ? void 0 : Y.s.x) ?? p.player.x),
-          y:
-            l === "trap"
-              ? p.player.y
-              : ((Y == null ? void 0 : Y.s.y) ?? p.player.y),
-          r: Q,
-          damage: K,
-          element: b.element,
-          color: Z,
-          life: 4,
-          tick: 0,
-          pull: ["pull"].includes(l) || b.id === "wind_2",
-          heal: l === "heal" || l === "drain",
-          self: l === "drain",
-          kind: l,
-        }));
-      return;
-    }
-    if (["nova", "aura"].includes(l)) {
-      t(p.player.x, p.player.y);
-      return;
-    }
-    if (["area", "strike", "execute", "bind"].includes(l)) {
-      Y &&
-        (t(Y.s.x, Y.s.y, l === "strike" ? 35 : Q),
-        l === "execute" &&
-          Y.hp < K * 0.3 &&
-          !Y.boss &&
-          this.damage(Y, Y.hp, "shadow"),
-        l === "bind" &&
-          (Y.status ?? (Y.status = {}), (Y.status.time = this.time + 2)));
-      return;
-    }
-    if (l === "cone") {
-      const r = Math.atan2(Y.s.y - p.player.y, Y.s.x - p.player.x);
-      for (const n of this.hash.query(p.player.x, p.player.y, Q + 40)) {
-        const e = Math.atan2(n.s.y - p.player.y, n.s.x - p.player.x) - r;
-        Math.abs(Math.atan2(Math.sin(e), Math.cos(e))) < 1.2 &&
-          (this.damage(n, K, b.element),
-          n.s.active &&
-            p.defenses.move(n.s, Math.cos(r) * 30, Math.sin(r) * 30, n.r));
-      }
-      p.melee(r, { range: 0, damage: 0, color: Z });
-      return;
-    }
-    if (l === "beam") {
-      const r = Math.atan2(Y.s.y - p.player.y, Y.s.x - p.player.x),
-        n = p.add.graphics().setDepth(8);
-      (n.lineStyle(8, Z, 0.7),
-        n.lineBetween(
-          p.player.x,
-          p.player.y,
-          p.player.x + Math.cos(r) * 650,
-          p.player.y + Math.sin(r) * 650,
-        ),
-        p.effect(n, 0.18));
-      for (const e of this.hash.query(p.player.x, p.player.y, 650)) {
-        const s = e.s.x - p.player.x,
-          a = e.s.y - p.player.y;
-        s * Math.cos(r) + a * Math.sin(r) > 0 &&
-          Math.abs(s * Math.sin(r) - a * Math.cos(r)) < e.r + 10 &&
-          this.damage(e, K, b.element);
-      }
-      return;
-    }
-    let h = (c >= 3 ? 2 : 1) + S.p(6);
-    b.id === "fire_1" && (h = c >= 5 ? 3 : c >= 3 ? 2 : 1);
-    for (let r = 0; r < h && p.bullets.length < 250; r++) {
-      const n =
-          Math.atan2(Y.s.y - p.player.y, Y.s.x - p.player.x) +
-          (r - (h - 1) / 2) * 0.15,
-        e = p.add
-          .ellipse(p.player.x, p.player.y, 14, 8, Z)
-          .setStrokeStyle(2, 0x494b34)
-          .setRotation(n)
-          .setDepth(7);
-      p.bullets.push({
-        s: e,
-        vx: Math.cos(n) * 430,
-        vy: Math.sin(n) * 430,
-        life: 1.5,
-        damage: K * (1 - 0.12 * Math.min(5, S.p(6))),
-        pierce: (["pierce", "return"].includes(l) ? 4 : 1) + S.p(7),
-        color: Z,
-        trail: 0,
-        hit: new Set(),
-        element: b.element,
-        explosive: b.id === "fire_1",
-        homing: l === "homing",
-        returning: l === "return",
-        age: 0,
-      });
-    }
-  }
-  receive(b, Y) {
-    const K = this.s,
-      Q = K.build;
-    if (Q.random() < Math.min(0.75, Q.p(15) * 0.05)) return;
-    K.hp < K.maxHp * 0.3 &&
-      Q.p(14) &&
-      this.time >= this.emergencyAt &&
-      ((this.shield += 15 * Q.p(14)), (this.emergencyAt = this.time + 20));
-    let Z =
-      b * (1 - Q.p(11) * 0.05) * (1 - Q.p(18) * 0.05 * (1 - K.hp / K.maxHp));
-    const p = Math.min(Z, this.shield);
-    ((this.shield -= p),
-      (Z -= p),
-      (K.hp = Math.max(0, K.hp - Z)),
-      K.impact(K.player.x, K.player.y, 0xff5858, false, false),
-      K.cameras.main.shake(90, 0.003),
-      K.sync(),
-      Y && Q.p(20) && this.damage(Y, b * 0.15 * Q.p(20), "physical", !0),
-      K.hp <= 0 &&
-        Q.p(19) &&
-        !this.revived &&
-        ((this.revived = !0), (K.hp = K.maxHp * 0.3), (K.invincible = 2)));
-  }
-  damage(b, Y, K = "physical", Q = !1) {
-    if (!b.s.active) return;
-    if (K === "ice" && !Q) b.frozenUntil = this.time + (b.boss ? 0.4 : 1.3);
-    const Z = this.s,
-      p = Z.build;
-    (b.status ?? (b.status = {}), b.reactions ?? (b.reactions = {}));
-    if (!(b.status.poison > this.time)) b.poison = 0;
-    let S =
-      Y *
-      (1 +
-        p.p(1) * 0.1 +
-        p.p(40) * 0.2 +
-        new Set(p.active.map((t) => t.element)).size * p.p(28) * 0.03) *
-      (b.boss ? 1 + p.p(3) * 0.12 : 1);
-    if (
-      (b.hp < (b.maxHp || 100) * 0.3 && (S *= 1 + p.p(10) * 0.15),
-      Q && (S *= 1 + p.p(29) * 0.15),
-      K === "fire" && Q && (S *= 1 + p.p(21) * 0.2),
-      K === "lightning" && (S *= 1 + p.p(23) * 0.15),
-      K === "shadow" && (S *= 1 + p.p(25) * 0.15),
-      !Q)
-    ) {
-      const t = (l, c, h, r) => {
-        c &&
-          (b.reactions[l] || 0) <= this.time &&
-          ((b.reactions[l] = this.time + h), (S += r));
-      };
-      if (
-        (t(
-          "melt",
-          (K === "fire" && b.status.ice > this.time) ||
-            (K === "ice" && b.status.fire > this.time),
-          1,
-          S * 0.6,
-        ),
-        t("poison", K === "fire" && b.poison >= 5, 2, 40),
-        K === "fire" && b.poison >= 5 && (b.poison -= 5),
-        t("super", K === "lightning" && b.status.ice > this.time, 2, 35),
-        t("electro", K === "lightning" && b.status.poison > this.time, 1.5, 40),
-        t("void", K === "holy" && b.status.shadow > this.time, 3, 75),
-        t("time", K === "lightning" && b.status.time > this.time, 1.5, 30),
-        K === "wind" &&
-          b.status.fire > this.time &&
-          (b.reactions.spread || 0) <= this.time)
-      ) {
-        b.reactions.spread = this.time + 2;
-        for (const l of this.hash.query(b.s.x, b.s.y, 90))
-          (l.status ?? (l.status = {}),
-            (l.status.fire = this.time + 3),
-            l.dotAt ?? (l.dotAt = this.time + 1));
-      }
-      if (
-        (K === "wind" &&
-          b.status.ice > this.time &&
-          (b.reactions.frost || 0) <= this.time &&
-          ((b.reactions.frost = this.time + 2), (b.status.ice = this.time + 5)),
-        K === "holy" && (b.status.shadow = 0),
-        (b.status[K] =
-          this.time +
-          3 *
-            (K === "poison"
-              ? 1 + p.p(24) * 0.2
-              : K === "ice"
-                ? 1 + p.p(22) * 0.2
-                : 1)),
-        p.random() < p.p(30) * 0.08)
-      ) {
-        const l = this.hash.query(b.s.x, b.s.y, 90).find((c) => c !== b);
-        l &&
-          (l.status ?? (l.status = {}),
-          (l.status[K] = this.time + 3),
-          l.dotAt ?? (l.dotAt = this.time + 1));
-      }
-      (b.dotAt ?? (b.dotAt = this.time + 1),
-        K === "poison" && (b.poison = Math.min(10, (b.poison || 0) + 1)));
-    }
-    if (
-      (Z.hit(
-        b,
-        (S * 100) /
-          (100 +
-            Math.max(
-              0,
-              (b.armor || 0) * (b.reactions.super > this.time ? 0.85 : 1),
-            )),
-        Kt[K],
-      ),
-      !Q && p.random() < p.p(17) * 0.05 && (Z.hp = Math.min(Z.maxHp, Z.hp + 1)),
-      !b.s.active)
-    ) {
-      (this.killStreak++, (this.lastKill = this.time));
-      const t = p.active.find((l) => l.type === "plague");
-      if (t && !Q && (t.eventAt || 0) <= this.time) {
-        t.eventAt = this.time + 0.5;
-        for (const l of this.hash.query(b.s.x, b.s.y, 100))
-          this.damage(l, 15 * t.level, "poison", !0);
-      }
-    }
-  }
-}
+const fe = Build;
+const ce = Combat;
 const pe = {
     fire: {
       name: "秘能爆破杖",
@@ -1069,13 +510,19 @@ class ge extends Lt.Scene {
     for (const key of artKeys) this.load.svg(key, `./assets/${key}.svg`);
   }
   create() {
+    this.job = null;
+    this.weaponClock = 0;
+    this.classTurrets = [];
+    this.damageNumbers = new DamageNumbers(this);
     this.events.once("shutdown", () => {
       this.panel?.destroy();
+      this.damageNumbers?.destroy();
       this.defenses?.cancel();
     });
     document.querySelector(".settings").removeAttribute("open");
     document.getElementById("timer").textContent = "00:00";
     document.getElementById("boss-hud").hidden = true;
+    document.getElementById("boss-warning").hidden = true;
     document.getElementById("game").classList.remove("low-health");
     (pt.setActive(!1),
       wt(),
@@ -1089,14 +536,11 @@ class ge extends Lt.Scene {
         pt.setVolume(Number(b.target.value) / 100)),
       (this.hitStopUntil = 0),
       (this.lastHitStop = -1000),
-      (this.build = new fe(1789)),
-      (this.combat = new ce(this)),
+      (this.build = new fe()),
+      (this.combat = new ce(this, (name) => pt.play(name))),
       (this.runTime = 0),
       (this.accumulator = 0),
-      (this.bossTimes = [120, 240, 360, 480].map(
-        (time) => time + Math.floor(Math.random() * 61) - 30,
-      )),
-      this.bossTimes.push(540),
+      (this.bossTimes = [...BALANCE.bosses]),
       (this.nodes = new Set()),
       (this.hostile = []),
       (this.hp = 100),
@@ -1130,6 +574,7 @@ class ge extends Lt.Scene {
       (this.weaponLocked = !1),
       (this.upgradeLevels = {}),
       (this.skillGraphics = this.add.graphics().setDepth(3)),
+      (this.enemyTelegraphs = this.add.graphics().setDepth(6)),
       this.events.once("shutdown", () =>
         this.input.keyboard.removeAllListeners("keydown-SPACE"),
       ),
@@ -1184,7 +629,7 @@ class ge extends Lt.Scene {
         {
           title: "出发，守住这一夜",
           detail: "选择技能，进入街区",
-          action: () => this.chooseWeapon(),
+          action: () => this.chooseClass(),
         },
       ]));
   }
@@ -1195,7 +640,7 @@ class ge extends Lt.Scene {
       for (const [b, Y] of Object.entries({
         health: `${Math.ceil(this.hp)} / ${this.maxHp}`,
         level: this.level,
-        damage: this.damage,
+        damage: `${Math.round((this.build.power - 1) * 100)}%`,
         speed: this.speed,
         kills: this.kills,
         "xp-label": `${Math.floor(this.xp)} / ${this.need}`,
@@ -1206,7 +651,8 @@ class ge extends Lt.Scene {
       }))
         yt(b).textContent = Y;
       ((yt("hp").style.width = `${(this.hp / this.maxHp) * 100}%`),
-        (yt("xp").style.width = `${(this.xp / this.need) * 100}%`));
+        (yt("xp").style.width =
+          `${Math.min(100, (this.xp / this.need) * 100)}%`));
     }
   }
   closePanel() {
@@ -1243,23 +689,37 @@ class ge extends Lt.Scene {
       : this.mode === "pause" && ((this.mode = "play"), this.closePanel()),
       this.sync());
   }
-  chooseWeapon() {
+  chooseClass() {
     this.showUpgradeCards(
-      "带上你的拿手好戏",
-      "十种技能，十种开局。你的下一次进化，由你决定。",
-      Et.map((skill) => ({
-        id: skill.id,
-        element: skill.element,
-        title: skill.name,
-        detail: skill.description,
-        action: () => {
-          this.build.add(skill.id);
-          this.mode = "play";
-          this.closePanel();
-          this.sync();
-        },
+      "选择你的守夜职业",
+      "五种武器，五种战法。职业武器自动攻击，升级自由搭配技能。",
+      CLASSES.map((job) => ({
+        id: job.icon,
+        title: job.name,
+        job,
+        levelText: job.weapon,
+        detail: `${job.description}\n生命 ${job.hp} · 移速 ${job.speed} · 护甲 ${job.armor}\n${job.weakness}`,
+        action: () => this.selectClass(job.id),
       })),
     );
+  }
+  selectClass(id) {
+    const job = classById(id);
+    if (!job || this.mode !== "ready") return;
+    this.job = job;
+    this.maxHp = this.hp = job.hp;
+    this.speed = job.speed;
+    this.build.job = job;
+    this.player.setTexture(`hero-${id}`);
+    this.gun.setTexture(job.texture);
+    document.getElementById("job-name").textContent = job.name;
+    document.querySelector(".survivor-avatar img").src =
+      `./assets/hero-${id}.svg`;
+    this.defenses.stock = job.materials ?? BALANCE.initialMaterials;
+    this.defenses.refresh();
+    this.mode = "play";
+    this.closePanel();
+    this.sync();
   }
   effect(b, Y, K = 0, Q = 0, Z = 0, p = 0) {
     (this.effects.length >= 220 && this.effects.shift().sprite.destroy(),
@@ -1351,53 +811,46 @@ class ge extends Lt.Scene {
       this.accumulator = 0;
     }
   }
-  hit(b, Y, K = 9941859) {
-    if (!b.s.active) return;
-    pt.play("hit");
-    const Q = this.build.random() < Math.min(0.75, this.build.p(4) * 0.05);
-    if (
-      ((b.hp -= Y * (Q ? 1.5 + this.build.p(5) * 0.2 : 1)),
-      this.impact(b.s.x, b.s.y, K, Q, b.hp <= 0),
-      this.flashEnemy(b),
-      Q)
-    ) {
-      const Z = this.add
-        .text(b.s.x, b.s.y - 25, "暴击!", {
-          fontSize: "13px",
-          color: "#a76a30",
-        })
-        .setDepth(9);
-      this.tweens.add({
-        targets: Z,
-        y: Z.y - 24,
-        alpha: 0,
-        duration: 500,
-        onComplete: () => Z.destroy(),
-      });
+  hit(enemy, amount, color = 0xdad0af, meta = {}) {
+    if (!enemy.s.active || amount <= 0) return 0;
+    const crit = !meta.dot && this.build.random() < this.build.critChance;
+    const actual = Math.min(enemy.hp, amount * (crit ? 1.5 : 1));
+    enemy.hp = Math.max(0, enemy.hp - actual);
+    this.damageNumbers.add(enemy, actual, { ...meta, crit });
+    if (!meta.dot) {
+      pt.play("hit");
+      this.impact(enemy.s.x, enemy.s.y, color, crit, enemy.hp <= 0);
+      this.flashEnemy(enemy);
     }
-    if (b.hp <= 0) {
-      (this.defenses.drop(b), b.final && this.finish(!0), pt.play("kill"));
-      const Z = this.add.image(b.s.x, b.s.y, "gem").setDepth(2);
-      ((Z.xp = b.boss ? 120 : 6),
-        this.gems.push(Z),
-        b.s.destroy(),
-        this.enemies.splice(this.enemies.indexOf(b), 1),
-        this.kills++,
-        this.sync());
+    if (enemy.hp <= 0) {
+      this.defenses.drop(enemy);
+      pt.play("kill");
+      const gem = this.add.image(enemy.s.x, enemy.s.y, "gem").setDepth(2);
+      gem.xp = enemy.xp ?? 3;
+      this.gems.push(gem);
+      enemy.s.destroy();
+      const index = this.enemies.indexOf(enemy);
+      if (index >= 0) this.enemies.splice(index, 1);
+      this.kills++;
+      if (enemy.boss) this.hp = Math.min(this.maxHp, this.hp + 10);
+      if (enemy.final) this.finish(true);
+      this.sync();
     }
+    return actual;
   }
   distance(b, Y) {
     return Math.hypot(b.x - Y.x, b.y - Y.y);
   }
-  explode(b, Y, K, Q) {
+  explode(b, Y, K, Q, radius = 68) {
     pt.play("explosion");
     const Z = this.add
-      .circle(b, Y, 90, Q, 0.18)
+      .circle(b, Y, radius, Q, 0.18)
       .setStrokeStyle(3, Q, 0.8)
       .setDepth(7);
     (this.effect(Z, 0.3), this.burst(b, Y, Q, 16, 180));
     for (const p of [...this.enemies])
-      this.distance({ x: b, y: Y }, p.s) <= 90 + p.r && this.hit(p, K, Q);
+      this.distance({ x: b, y: Y }, p.s) <= radius + p.r &&
+        this.combat.damage(p, K, "fire");
   }
   melee(b, Y) {
     const K = this.add
@@ -1622,66 +1075,60 @@ class ge extends Lt.Scene {
     }
   }
   upgrade() {
-    (pt.play("upgrade"),
-      (this.mode = "upgrade"),
-      this.level++,
-      (this.xp -= this.need),
-      (this.need = Ht(this.level)),
-      this.showUpgradeCards(
-        "选择技能升级",
-        "",
-        this.build.options().map((b) => ({
-          id: b.id,
-          element: b.element,
-          title: b.name,
-          levelText: `Lv.${b.level}`,
-          detail:
-            b.description +
-            (b.base
-              ? `
-基础伤害 ${b.base}`
-              : ""),
-          action: () => {
-            (b.id.startsWith("heal_")
-              ? (this.hp = Math.min(this.maxHp, this.hp + 30))
-              : this.build.add(b.id),
-              (this.maxHp = Math.max(
-                1,
-                (100 + this.build.p(12) * 20) * (1 - this.build.p(40) * 0.1),
-              )),
-              (this.hp = Math.min(this.hp, this.maxHp)),
-              this.closePanel(),
-              (this.mode = "play"),
-              this.sync());
-          },
-        })),
-      ),
-      this.sync());
+    if (this.mode !== "play" || this.xp < this.need) return;
+    pt.play("upgrade");
+    this.mode = "upgrade";
+    this.level++;
+    this.xp -= this.need;
+    this.need = Ht(this.level);
+    const choices = this.build.options(this.level);
+    this.showUpgradeCards(
+      `Lv.${this.level} · 选择本次成长`,
+      `技能 ${this.build.active.length}/4 · 伤害 +${Math.round((this.build.power - 1) * 100)}% · 护甲 ${this.build.armor} · 每次只选一项`,
+      choices.map((choice) => ({
+        id: choice.kind === "attribute" ? "heal_supply" : choice.id,
+        element: choice.element,
+        title: choice.name,
+        levelText:
+          choice.kind === "skill"
+            ? choice.previous
+              ? `技能 Lv.${choice.previous} → Lv.${choice.level}`
+              : "获得新技能"
+            : choice.kind === "attribute"
+              ? `属性 ${choice.level}/${choice.max}`
+              : "战地补给",
+        detail: upgradeDescription(choice, this.build),
+        action: () => {
+          if (!this.build.apply(choice, this)) return;
+          this.closePanel();
+          this.mode = "play";
+          this.sync();
+          // Boss XP can cross multiple thresholds; resolve every earned choice.
+          if (this.xp >= this.need) this.upgrade();
+        },
+      })),
+    );
+    this.sync();
   }
-  spawnBoss(b) {
-    const Y = b === 540,
-      angle = Math.random() * Math.PI * 2,
-      pos = this.defenses.spawn(550 * Math.cos(angle), 550 * Math.sin(angle));
+  spawnBoss(time) {
+    const index = BALANCE.bosses.indexOf(time);
+    if (index < 0) return;
+    const stat = bossStats(index),
+      angle = this.build.random() * Math.PI * 2;
+    const pos = this.defenses.spawn(
+      410 * Math.cos(angle),
+      410 * Math.sin(angle),
+    );
     if (!pos) {
-      this.nodes.delete(b);
+      this.nodes.delete(time);
       return;
     }
-    const K = this.add
-        .image(pos.x, pos.y, "brute")
-        .setDepth(5)
-        .setScale(Y ? 2.4 : 1.7)
-        .setTint(Y ? 14066111 : 13286277),
-      Q = Y ? 14e3 : b * 7;
-    this.enemies.push({
-      s: K,
-      hp: Q,
-      maxHp: Q,
-      speed: Y ? 65 : 55,
-      r: Y ? 55 : 38,
-      boss: !0,
-      final: Y,
-      armor: 25,
-    });
+    const sprite = this.add
+      .image(pos.x, pos.y, "brute")
+      .setDepth(5)
+      .setScale(stat.final ? 2.4 : 1.7)
+      .setTint(stat.final ? 0xe7bbad : 0xd6c293);
+    this.enemies.push({ ...stat, s: sprite });
   }
   finish(b) {
     (pt.play(b ? "win" : "lose"),
@@ -1711,11 +1158,12 @@ class ge extends Lt.Scene {
     if ((pt.setActive(this.mode === "play"), this.mode !== "play")) return;
     let K = Math.min(Y, 50) / 1e3;
     (this.updateEffects(K),
+      this.damageNumbers.update(K),
       (this.recoil = Math.max(0, this.recoil - K * 60)),
       (this.regenClock += K),
       this.regenClock >= 1 &&
         ((this.regenClock = 0),
-        (this.hp = Math.min(this.maxHp, this.hp + this.build.p(13) * 0.2)),
+        (this.hp = Math.min(this.maxHp, this.hp + this.build.regen)),
         this.sync()),
       (this.runTime += K),
       (this.elapsed = this.runTime),
@@ -1754,7 +1202,7 @@ class ge extends Lt.Scene {
       this.runTime >= t &&
         !this.nodes.has(t) &&
         (this.nodes.add(t), this.spawnBoss(t));
-    if (this.runTime >= 630) {
+    if (this.runTime >= BALANCE.duration + BALANCE.overtime) {
       this.finish(!1);
       return;
     }
@@ -1790,32 +1238,29 @@ class ge extends Lt.Scene {
         (this.gems = this.gems.filter((t) =>
           this.distance(this.player, t) > 1800 ? (t.destroy(), !1) : !0,
         ))),
-      this.runTime < 600 && this.spawnClock <= 0 && this.enemies.length < 300)
+      this.runTime < BALANCE.duration &&
+        this.spawnClock <= 0 &&
+        this.enemies.length < BALANCE.enemyCap)
     ) {
-      this.spawnClock = Math.max(0.19, 0.85 - this.wave * 0.075);
-      let t = this.build.random() * Math.PI * 2,
-        l = this.defenses.spawn(Math.cos(t) * 650, Math.sin(t) * 500);
-      if (l) {
-        let c = l.y,
-          h = this.build.random() < 0.12 + this.wave * 0.025,
-          r = this.add.image(l.x, c, h ? "brute" : "bug").setDepth(4);
-        const n = this.runTime > 60 ? this.build.random() : 0,
-          e = n > 0.8,
-          s = n > 0.5 && !e;
-        (e && r.setTexture("spitter"),
-          s && r.setTexture("runner"),
-          this.enemies.push({
-            s: r,
-            hp: (h ? 65 : 26) + this.wave * 7,
-            maxHp: (h ? 65 : 26) + this.wave * 7,
-            speed: (s ? 100 : h ? 40 : 65) + this.wave * 2,
-            r: h ? 25 : 20,
-            ranged: e,
-            shot: 2,
-            armor: this.runTime > 240 && h ? 35 : 0,
-          }));
+      this.spawnClock = spawnInterval(
+        this.runTime,
+        this.enemies.some((e) => e.boss),
+      );
+      const angle = this.build.random() * Math.PI * 2;
+      const point = this.defenses.spawn(
+        Math.cos(angle) * 520,
+        Math.sin(angle) * 430,
+      );
+      if (point) {
+        const kind = enemyKind(this.runTime, this.build.random());
+        this.enemies.push({
+          ...enemyStats(kind, this.runTime),
+          kind,
+          s: this.add.image(point.x, point.y, kind).setDepth(4),
+        });
       }
     }
+    this.enemyTelegraphs.clear();
     for (let t of this.enemies) {
       this.defenses.confine(t.s, t.r);
       if (t.flashUntil && t.flashUntil <= this.combat.time) {
@@ -1831,6 +1276,18 @@ class ge extends Lt.Scene {
         t.frozenUntil = 0;
       }
 
+      if ((t.ranged || t.boss) && t.shot < 0.55) {
+        const a = Math.atan2(this.player.y - t.s.y, this.player.x - t.s.x);
+        this.enemyTelegraphs
+          .lineStyle(2, 0xe16b4a, 0.8)
+          .strokeCircle(t.s.x, t.s.y, t.r + 7)
+          .lineBetween(
+            t.s.x,
+            t.s.y,
+            t.s.x + Math.cos(a) * (t.r + 36),
+            t.s.y + Math.sin(a) * (t.r + 36),
+          );
+      }
       let l = this.player.x - t.s.x,
         c = this.player.y - t.s.y,
         h = Math.hypot(l, c);
@@ -1847,21 +1304,22 @@ class ge extends Lt.Scene {
         (t.ranged || t.boss) &&
           ((t.shot = (t.shot ?? 2) - K),
           t.shot <= 0 &&
-            ((t.shot = t.boss ? 1.5 : 2.5), this.hostile.length < 100)))
+            ((t.shot = t.shotCooldown ?? 2.4), this.hostile.length < 100)))
       ) {
         const r = Math.atan2(c, l);
         this.hostile.push({
           s: this.add.image(t.s.x, t.s.y, "orb").setTint(14317688),
-          vx: Math.cos(r) * 180,
-          vy: Math.sin(r) * 180,
+          vx: Math.cos(r) * (t.bulletSpeed ?? 180),
+          vy: Math.sin(r) * (t.bulletSpeed ?? 180),
           life: 4,
+          damage: t.damage ?? 10,
         });
       }
       if (
         h < t.r + 18 &&
         this.invincible <= 0 &&
-        (this.combat.receive(12, t),
-        (this.invincible = 0.7),
+        (this.combat.receive(t.damage ?? 9, t),
+        (this.invincible = BALANCE.player.invulnerability),
         pt.play("hurt"),
         this.sync(),
         this.hp <= 0)
@@ -1872,6 +1330,7 @@ class ge extends Lt.Scene {
     }
     for (let t = this.bullets.length - 1; t >= 0 && this.mode === "play"; t--) {
       let l = this.bullets[t];
+      if(l.returning)l.s.rotation+=K*10;
       if (((l.age = (l.age || 0) + K), l.homing && this.enemies.length)) {
         const c = this.enemies.reduce((r, n) =>
             this.distance(l.s, n.s) < this.distance(l.s, r.s) ? n : r,
@@ -1879,10 +1338,10 @@ class ge extends Lt.Scene {
           h = Math.atan2(c.s.y - l.s.y, c.s.x - l.s.x);
         ((l.vx = Math.cos(h) * 430), (l.vy = Math.sin(h) * 430));
       }
-      if (l.returning && l.age > 0.75) {
+      if (l.returning && l.age > (l.returnAt ?? 0.75)) {
         const c = Math.atan2(this.player.y - l.s.y, this.player.x - l.s.x);
-        ((l.vx = Math.cos(c) * 430),
-          (l.vy = Math.sin(c) * 430),
+        ((l.vx = Math.cos(c) * (l.returnSpeed ?? 430)),
+          (l.vy = Math.sin(c) * (l.returnSpeed ?? 430)),
           l.returned || (l.hit.clear(), (l.returned = !0)));
       }
       if (
@@ -1905,7 +1364,7 @@ class ge extends Lt.Scene {
           Lt.Math.Distance.Between(l.s.x, l.s.y, c.s.x, c.s.y) < c.r + 5 &&
           (l.hit.add(c),
           l.explosive
-            ? (this.explode(l.s.x, l.s.y, l.damage, l.color),
+            ? (this.explode(l.s.x, l.s.y, l.damage, l.color, l.blastRadius),
               (l.explosive = !1))
             : l.element
               ? this.combat.damage(c, l.damage, l.element)
@@ -1917,7 +1376,8 @@ class ge extends Lt.Scene {
           break;
         }
       l.life <= 0 &&
-        (l.explosive && this.explode(l.s.x, l.s.y, l.damage, l.color),
+        (l.explosive &&
+          this.explode(l.s.x, l.s.y, l.damage, l.color, l.blastRadius),
         l.s.destroy(),
         this.bullets.splice(t, 1));
     }
@@ -1928,21 +1388,24 @@ class ge extends Lt.Scene {
         (l.life -= K),
         this.distance(this.player, l.s) < 22 &&
           this.invincible <= 0 &&
-          (this.combat.receive(9),
-          (this.invincible = 0.5),
+          (this.combat.receive(l.damage ?? 10),
+          (this.invincible = BALANCE.player.invulnerability),
           (l.life = 0),
           this.hp <= 0 && this.finish(!1)),
         l.life <= 0 && (l.s.destroy(), this.hostile.splice(t, 1)));
     }
     if (
       this.mode === "play" &&
-      (this.combat.update(K), this.defenses.update(K), this.mode === "play")
+      (this.combat.update(K),
+      this.mode === "play" && updateClassWeapon(this, K),
+      this.defenses.update(K),
+      this.mode === "play")
     )
       for (let t = this.gems.length - 1; t >= 0; t--) {
         let l = this.gems[t],
           c = Lt.Math.Distance.Between(l.x, l.y, this.player.x, this.player.y);
         if (
-          (c < 110 * (1 + this.build.p(33) * 0.3) &&
+          (c < BALANCE.player.pickup * this.build.pickupMultiplier &&
             c > 0 &&
             ((l.x += ((this.player.x - l.x) / c) * 320 * K),
             (l.y += ((this.player.y - l.y) / c) * 320 * K)),
@@ -1950,7 +1413,7 @@ class ge extends Lt.Scene {
             (pt.play("pickup"),
             l.destroy(),
             this.gems.splice(t, 1),
-            (this.xp += (l.xp || 6) * (1 + this.build.p(32) * 0.15)),
+            (this.xp += l.xp ?? 3),
             this.sync(),
             this.xp >= this.need))
         ) {
