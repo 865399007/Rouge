@@ -30,13 +30,15 @@ export function drawBattleHud({s,w,h,ids,screen,capRect,toggleNode,padNode,setti
     const ready=parseFloat(roll.style.getPropertyValue?.('--roll-ready') || roll.style['--roll-ready'])/100;
     ring.lineStyle(5,0x95b679).beginPath().arc(rx,ry,46,-Math.PI/2,-Math.PI/2+2*Math.PI*ready).strokePath();
     drawIcon('ui-roll',rx,ry,72);hit(roll,rx-56,ry-56,112,112);
-    const pad=padNode;
-    const sx=w/screen.windowWidth,sy=h/screen.windowHeight;
-    const jx=pad.hidden?left+61:parseFloat(pad.style.left)*sx,jy=pad.hidden?h-105:parseFloat(pad.style.top)*sy;
-    const shift=pad.firstElementChild.style.transform?.match(/-?[0-9.]+/g)||[0,0];
-    const radius=h*.095;
-    ring.fillStyle(0x31392d,.26).fillCircle(jx,jy,radius).lineStyle(3,cream,.68).strokeCircle(jx,jy,radius);
-    ring.fillStyle(cream,.8).fillCircle(jx+Number(shift[0])*sx,jy+Number(shift[1])*sy,radius*.38);
+    if (!padNode.hidden) {
+      const pad=padNode;
+      const sx=w/screen.windowWidth,sy=h/screen.windowHeight;
+      const jx=parseFloat(pad.style.left)*sx,jy=parseFloat(pad.style.top)*sy;
+      const shift=pad.firstElementChild.style.transform?.match(/-?[0-9.]+/g)||[0,0];
+      const radius=h*.095;
+      ring.fillStyle(0x31392d,.26).fillCircle(jx,jy,radius).lineStyle(3,cream,.68).strokeCircle(jx,jy,radius);
+      ring.fillStyle(cream,.8).fillCircle(jx+Number(shift[0])*sx,jy+Number(shift[1])*sy,radius*.38);
+    }
     const tools=ids['tower-tools'];if(tools){const towerTop=(h-(3*74+2*8))/2;type(right-74,towerTop-26,tools.children[0]?.textContent,14,85);Array.from(tools.children).filter(n=>n.tagName==='BUTTON').forEach((n,i)=>{const y=towerTop+i*82;box(right-74,y,74,74,n.disabled?0x999999:cream,8,3,0,.25);drawIcon(images(n)[0]+(n.disabled?"-disabled":""),right-37,y+27,46);type(right-37,y+52,['速射 ◆3','冰晶 ◆5','爆裂 ◆7'][i],13,72,true,true);hit(n,right-74,y,74,74);});}
     const up=ids['tower-upgrade'];
     if(up&&!up.hidden&&s.defenses?.selectedTower){
