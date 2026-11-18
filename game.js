@@ -870,7 +870,7 @@ class ge extends Lt.Scene {
         this.lastAttackShake = now;
         this.cameras.main.shake(
           crit || enemy.hp <= 0 ? 75 : 55,
-          crit || enemy.hp <= 0 ? 0.0021 : 0.0013,
+          crit ? 0.0021 : 0.00085,
           false,
         );
       }
