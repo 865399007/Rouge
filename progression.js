@@ -28,7 +28,7 @@ export const ATTRIBUTES = [
     description: "护甲 +5，按 100 / (100 + 护甲) 减伤",
     max: 5,
   },
-  { id: "evasion", name: "灵巧闪避", description: "闪避冷却缩短 0.5 秒，满级冷却 2.5 秒", max: 5 },
+  { id: "evasion", name: "疾跑训练", description: "疾跑冷却缩短 0.5 秒，满级冷却 12.5 秒", max: 5 },
   { id: "speed", name: "轻装步伐", description: "移动速度 +4%", max: 5 },
   {
     id: "magnet",

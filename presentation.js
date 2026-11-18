@@ -2,16 +2,16 @@ import { BALANCE, variants } from "./balance.js";
 // Original vector art and presentation layer.
 // Lobby order: ground, shade, highlight, landmark and smaller scenery.
 const terrain = [
-  [0x35414b,0x222d36,0x475660,"kiosk","planter"],
-  [0x30434a,0x202f37,0x445e65,"bridge","reeds"],
-  [0x413d40,0x292c33,0x554c4d,"wagon","rails"],
-  [0x34463f,0x22352f,0x4a594c,"glasshouse","shrooms"],
-  [0x3b3946,0x282731,0x514759,"mine","crystal"],
-  [0x383749,0x242637,0x4b475e,"neon","tyres"],
-  [0x304448,0x213237,0x435657,"crane","buoy"],
-  [0x36404c,0x232c39,0x4a5664,"turbine","barrier"],
-  [0x35423e,0x232d30,0x4b5752,"dish","cabinet"],
-  [0x44404a,0x2e2d38,0x59515a,"keep","brazier"],
+  [0x455462,0x2c3a46,0x5c707d,"kiosk","planter"],
+  [0x3e5760,0x2a3d48,0x587a83,"bridge","reeds"],
+  [0x544f53,0x353942,0x6e6364,"wagon","rails"],
+  [0x445b52,0x2c453d,0x607463,"glasshouse","shrooms"],
+  [0x4d4a5b,0x343340,0x695c74,"mine","crystal"],
+  [0x49485f,0x2f3148,0x625c7a,"neon","tyres"],
+  [0x3e585e,0x2b4148,0x577071,"crane","buoy"],
+  [0x465363,0x2e394a,0x607082,"turbine","barrier"],
+  [0x455651,0x2e3a3e,0x62716b,"dish","cabinet"],
+  [0x585360,0x3c3a49,0x746975,"keep","brazier"],
 ];
 // Secondary silhouettes vary with the habitat, including rare built landmarks.
 const habitats = [
@@ -24,6 +24,7 @@ const habitats = [
 const flatScenery = new Set(["rails","broken-deck"]);
 export const sceneryDepth = feet => 4 + feet / 16000;
 export const artKeys = [
+  "spider","hound","rat",
   ...new Set([...terrain.flatMap(row => row.slice(3)), ...habitats.flat()].map(name => "scenery-"+name)),
   "mount-boar-body", "mount-lynx-body", "mount-stag-body",
   "mount-walker-chassis", "mount-walker", "mount-stag", "mount-drake", "mount-lynx", "mount-boar",

@@ -1,7 +1,7 @@
 // Quotas count every combatant, including the boss. No clock advances the wave.
 export const waves = [
-  {name:"游尸逼近", total:18, count:3, interval:1.35, kinds:["bug","bug","moth"]},
-  {name:"双巷夹击", total:26, count:4, interval:1.35, kinds:["runner","bug","runner","moth"], crossfire:true},
+  {name:"游尸逼近", total:18, count:3, interval:1.35, kinds:["bug","rat","moth","spider"]},
+  {name:"双巷夹击", total:26, count:4, interval:1.35, kinds:["runner","bug","hound","moth"], crossfire:true},
   {name:"铁卫悬赏", total:30, count:3, interval:1.3, kinds:["crab","runner","bug"], bounty:true},
   {name:"疫囊火线", total:35, count:4, interval:1.35, kinds:["pod","hopper","runner","spitter"], crossfire:true},
   {name:"破门尸魁", total:40, count:4, interval:1.2, kinds:["ram","bug","brute","runner"], bossIndex:0},

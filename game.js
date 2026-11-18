@@ -601,6 +601,7 @@ class ge extends Lt.Scene {
       (this.ring = this.add
         .circle(450, 310, 28 * BALANCE.player.visualScale)
         .setStrokeStyle(2, 0xffe7a0, 0.65)),
+      (this.targetArrow = this.add.triangle(0,0,0,0,12,5,0,10,0xffdc78).setStrokeStyle(1,0x332c23).setDepth(5).setVisible(false)),
       (this.defenses = new Defenses(this)),
       this.player.setPosition(
         this.defenses.width / 2,
@@ -1431,16 +1432,33 @@ class ge extends Lt.Scene {
     }
     const input = this.movementInput();
     const S = Math.hypot(input.x, input.y);
-    const rolling = this.roll.step(K, input);
-    if (!rolling) {
+    const movementTime = this.roll.step(K);
+    {
       if (S)
         this.defenses.move(
           this.player,
-          (input.x / S) * this.movementSpeed * K,
-          (input.y / S) * this.movementSpeed * K,
+          (input.x / S) * this.movementSpeed * movementTime,
+          (input.y / S) * this.movementSpeed * movementTime,
           25,
         );
       this.player.rotation = S ? Math.sin(b * 0.018) * 0.08 : 0;
+    }
+    let nearestAngle, bestDistance = Infinity;
+    for (const enemy of this.enemies) {
+      if (enemy.hp <= 0) continue;
+      const dx = enemy.s.x - this.player.x, dy = enemy.s.y - this.player.y;
+      const distance = dx*dx + dy*dy;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        nearestAngle = Math.atan2(dy,dx);
+      }
+    }
+    this.targetArrow.setVisible(nearestAngle !== undefined);
+    if (nearestAngle !== undefined) {
+      const radius = this.ring.radius + 3;
+      this.targetArrow.setRotation(nearestAngle).setPosition(
+        this.player.x + radius*Math.cos(nearestAngle),
+        this.player.y + 14*this.player.scaleY + radius*Math.sin(nearestAngle));
     }
     updateSupply(this,K);
     if (
@@ -1735,7 +1753,7 @@ class ge extends Lt.Scene {
     for(const enemy of this.enemies){
       enemy.s.setDepth(sceneryDepth(enemy.s.y+enemy.s.displayHeight*.38));
     }
-    updatePresentation(this, S > 0 || rolling);
+    updatePresentation(this, S > 0);
     drawStatusEffects(this);
     updateBuffIcons(this);
   }

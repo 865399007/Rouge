@@ -8,7 +8,7 @@ export const BALANCE = {
   enemyCap: 240,
   initialMaterials: 3,
   elites: { first: 25, interval: 30 },
-  roll: { cooldown: 5, duration: 0.3, distance: 150 },
+  roll: { cooldown: 15, duration: 5, speedBonus: 0.3 },
   skillLevelGates: [1, 3, 6, 10, 15],
   damageScales: [1, 1.35, 2.4, 4.1, 7.2],
   cooldownScales: [1, 0.96, 0.90, 0.82, 0.72],
@@ -89,6 +89,7 @@ export const variants = {
 };
 const variantPool = Object.entries(variants);
 const originalStats = {
+  spider: [22, 94, 7, 3], hound: [38, 116, 11, 3], rat: [15, 108, 5, 2],
   bug: [30, 68, 9, 3], runner: [24, 103, 8, 3],
   spitter: [33, 51, 10, 4], brute: [70, 43, 15, 6],
 };
