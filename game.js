@@ -876,7 +876,7 @@ class ge extends Lt.Scene {
       }
       this.hitStop(100);
       const angle = Math.atan2(enemy.s.y-this.player.y, enemy.s.x-this.player.x);
-      enemy.knockback = {x:Math.cos(angle), y:Math.sin(angle), remaining:enemy.boss ? 4 : 12};
+      enemy.knockback = {x:Math.cos(angle), y:Math.sin(angle), peak:enemy.boss ? 7 : 18, elapsed:0, travel:0};
       enemy.hitArt = (enemy.hitArt || []).filter(sprite => sprite.active);
       this.hitEffectOwner = enemy;
       this.impact(enemy.s.x, enemy.s.y, color, crit, enemy.hp <= 0);
@@ -911,12 +911,27 @@ class ge extends Lt.Scene {
   }
   updateEnemyReaction(enemy, dt) {
     const push = enemy.knockback;
-    if (push) {
-      const distance = Math.min(push.remaining, dt*100);
-      this.defenses.move(enemy.s, push.x*distance, push.y*distance, enemy.r);
-      push.remaining -= distance;
-      if (push.remaining <= 0) enemy.knockback = null;
+    if (!push) return false;
+    const outward = 2/30, rebound = 3/30;
+    const previous = push.elapsed;
+    push.elapsed = Math.min(previous + dt, outward + rebound);
+    if (previous < outward) {
+      const from = 1 - previous/outward;
+      const to = 1 - Math.min(push.elapsed,outward)/outward;
+      const step = push.peak * (from*from - to*to);
+      const {x,y} = enemy.s;
+      this.defenses.move(enemy.s, push.x*step, push.y*step, enemy.r);
+      // Rebound only from distance actually travelled, including against walls.
+      push.travel += Math.max(0, Math.min(step,(enemy.s.x-x)*push.x + (enemy.s.y-y)*push.y));
     }
+    if (push.elapsed > outward) {
+      const from = 1 - Math.max(0,previous-outward)/rebound;
+      const to = 1 - (push.elapsed-outward)/rebound;
+      const step = push.travel * .65 * (from*from - to*to);
+      this.defenses.move(enemy.s, -push.x*step, -push.y*step, enemy.r);
+    }
+    if (push.elapsed >= outward+rebound) enemy.knockback = null;
+    return true;
   }
   settleDefeated(dt) {
     for (let i=this.defeatedEnemies.length-1; i>=0; i--) {
@@ -1454,7 +1469,7 @@ class ge extends Lt.Scene {
     }
     this.enemyTelegraphs.clear();
     for (let t of this.enemies) {
-      this.updateEnemyReaction(t,K);
+      const recoiling = this.updateEnemyReaction(t,K);
       this.defenses.confine(t.s, t.r);
       if (this.waveSpawned === encounter.total && this.enemies.length <= 3 &&
           !this.cameras.main.worldView.contains(t.s.x,t.s.y)) {
@@ -1509,7 +1524,7 @@ class ge extends Lt.Scene {
       let l = attackTarget.x - t.s.x,
         c = attackTarget.y - t.s.y,
         h = Math.hypot(l, c);
-      if (h > 0 && (!t.ranged || h > (t.reach || 260))) {
+      if (!recoiling && h > 0 && (!t.ranged || h > (t.reach || 260))) {
         t.gait ??= t.s.x * 0.07;
         t.gait += K * 3;
         const side = (t.sway || 0) * Math.sin(t.gait);
