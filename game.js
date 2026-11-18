@@ -1,3 +1,4 @@
+import {attachBrowserHud, preloadHud} from './browser-hud.js';
 import { stages, stageWaves, loadLobby, saveLobby, renderLobby, rewardVictory } from "./lobby.js?v=stage-lock-1";
 import { ImpactAudio } from "./impact-audio.js";
 import { encounterAngle, updateSupply, updateBossRing } from "./encounters.js";
@@ -490,6 +491,7 @@ class ge extends Lt.Scene {
     super("garden");
   }
   preload() {
+    if (typeof wx === "undefined") preloadHud(this);
     preloadBuffIcons(this);
     for (const key of artKeys) this.load.svg(key, `./assets/${key}.svg`);
   }
@@ -1637,6 +1639,7 @@ const Ct = new Lt.Game({
   scene: ge,
   scale: { mode: Lt.Scale.NONE, autoCenter: Lt.Scale.CENTER_BOTH },
 });
+if (typeof wx === "undefined") attachBrowserHud(Ct);
 function xe() {
   const st = document.getElementById("game").getBoundingClientRect(),
     b = Math.max(900, Math.round((620 * st.width) / Math.max(1, st.height)));

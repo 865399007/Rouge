@@ -1651,3 +1651,10 @@ kbd {
 #game .pause-overlay { background: rgb(40 37 29 / 35%); backdrop-filter: none; }
 #game .pause-overlay .game-menu { display: contents; }
 #game .pause-overlay button { display: grid; place-items: center; width: 200px; height: 64px; min-height: 0; padding: 0; font: bold 24px sans-serif; background: #f0e6cd; border: 3px solid #322e23; border-radius: 12px; box-shadow: 0 4px #322e2373; }
+
+/* Phaser draws the combat HUD; native targets retain pointer and keyboard input. */
+.canvas-battle .hud, .canvas-battle > #tower-upgrade { visibility: hidden; }
+#game.canvas-battle .joystick { opacity: 0; }
+.canvas-hud-controls { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.canvas-hud-controls > * { position: absolute; margin: 0; padding: 0; opacity: 0; pointer-events: auto; touch-action: manipulation; }
+.canvas-hud-controls > :focus-visible { opacity: 1; background: transparent; border: 0; outline: 2px solid #ffcf57; }
