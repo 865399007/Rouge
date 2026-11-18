@@ -1665,3 +1665,30 @@ kbd {
 .canvas-hud-controls > .tower-hud-target[hidden] { display: none; }
 .tower-hud-target img { margin-top: 5.4%; width: 62.2%; height: 62.2%; object-fit: contain; pointer-events: none; }
 .tower-hud-target:disabled img { filter: grayscale(1); }
+
+#game .modal-overlay.upgrade-overlay {
+  padding: 10px; background: transparent; backdrop-filter: none;
+}
+#game .upgrade-overlay .game-menu { display: contents; }
+#game .upgrade-overlay .choice-grid {
+  display: flex; justify-content: center; align-items: stretch;
+  gap: clamp(5px, 1vw, 10px); margin: 0; width: 100%;
+}
+#game .upgrade-overlay .choice-card {
+  flex: 0 1 194px; min-width: 0; min-height: 150px; height: auto;
+  padding: 10px; gap: 5px; display: grid;
+  grid-template-columns: 34px 1fr; grid-template-rows: auto auto 1fr;
+  align-content: start; align-items: center; border: 2px solid #322e23;
+  border-radius: 8px; box-shadow: none; transform: none;
+  background: rgb(249 241 220 / 25%); color: #fff8dc;
+  text-shadow: 0 1px 2px #272723;
+}
+#game .upgrade-overlay .choice-icon { width: 34px; height: 34px; margin: 0; border: 0; background: none; color: #fff3ca; box-shadow: none; transform: none; }
+#game .upgrade-overlay .choice-icon svg { width: 30px; height: 30px; }
+#game .upgrade-overlay .choice-tag { margin: 0; color: #eee8cf; font-size: 12px; }
+#game .upgrade-overlay .choice-title, #game .upgrade-overlay .choice-detail {
+  grid-column: 1 / -1; align-self: start; margin: 0; color: inherit;
+}
+#game .upgrade-overlay .choice-title { font-size: clamp(15px,2vw,19px); }
+#game .upgrade-overlay .choice-detail { font-size: clamp(12px,1.6vw,14px); line-height: 1.35; white-space: pre-line; }
+#game .upgrade-overlay .choice-card:focus-visible { outline: 2px solid #ffcf57; }

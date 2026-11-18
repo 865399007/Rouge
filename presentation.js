@@ -277,6 +277,10 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
       : "W A S D  移动    /    SPACE  暂停    /    触屏拖动左侧移动",
   );
   panel.append(footer);
+  if (cards && scene.mode === "upgrade") {
+    overlay.classList.add("upgrade-overlay");
+    panel.replaceChildren(list);
+  }
   if (scene.mode === "pause") {
     overlay.classList.add("pause-overlay");
     const resume = list.querySelector("button");
