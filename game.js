@@ -202,53 +202,66 @@ class ee {
     ((this.ambientGain = b.createGain()),
       (this.ambientGain.gain.value = this.active ? 1 : 0),
       this.ambientGain.connect(this.master));
-    // Sixteen bars of 4/4: a low pedal riff, syncopated drums and short answering stabs.
-    const rate = 24000, tick = 60 / 134 / 4;
-    const buffer = b.createBuffer(1, Math.round(256 * tick * rate), rate);
-    const mix = buffer.getChannelData(0);
-    const cache = new Map();
-    function note(kind, pitch, step, ticks, level) {
-      const key = [kind,pitch,ticks].join("/");
-      let sound = cache.get(key);
+    // Sustained low strings and a legato horn line over a steady marching pulse.
+    const rate = 24000, beat = 60 / 120;
+    const buffer = b.createBuffer(1, 64 * beat * rate, rate);
+    const mix = buffer.getChannelData(0), notes = new Map();
+    function voice(kind, midi, start, beats, gain) {
+      const key = [kind,midi,beats].join("/");
+      let sound = notes.get(key);
       if (!sound) {
-        const seconds = ticks*tick;
-        sound = new Float32Array(Math.ceil(seconds*rate));
-        const hz = 440 * 2 ** ((pitch-69)/12);
-        let phase=0, previous=0;
+        const held = beats * beat;
+        const release = kind === "strings" ? .24 : kind === "horn" ? .13 : .035;
+        sound = new Float32Array(Math.ceil((held+release)*rate));
+        const hz = 440 * 2 ** ((midi-69)/12);
+        let previous = 0;
         for (let i=0;i<sound.length;i++) {
-          const t=i/rate, tail=Math.min(1,(seconds-t)/.018);
-          const noise=Math.random()*2-1;
-          phase += 2*Math.PI*(kind==="kick" ? 53+88*Math.exp(-t/.025) : hz)/rate;
-          let sample;
-          if (kind==="kick") sample=Math.sin(phase)*Math.exp(-t/.062);
-          else if (kind==="snare") sample=(.52*(noise-previous)+.48*Math.sin(phase))*Math.exp(-t/.034);
-          else if (kind==="hat") sample=(noise-previous)*.48*Math.exp(-t/.012);
-          else if (kind==="bass") sample=(Math.sin(phase)+.33*Math.sin(2*phase)+.15*Math.sin(3*phase))*Math.exp(-t/.14);
-          else sample=(Math.sin(phase)+.3*Math.sin(3*phase)+.17*Math.sin(5*phase))*Math.exp(-t/.12);
-          sound[i]=sample*Math.min(1,t/.003)*tail;
-          previous=noise;
+          const t=i/rate, phase=2*Math.PI*hz*t;
+          const tail=Math.max(0,1-Math.max(0,t-held)/release);
+          let wave, attack;
+          if(kind==="strings"){
+            wave=.58*Math.sin(phase)+.27*Math.sin(phase*1.003)+.18*Math.sin(2*phase)+.075*Math.sin(3*phase);
+            attack=.085;
+          }else if(kind==="horn"){
+            const vibrato=.045*Math.sin(2*Math.PI*4.6*t);
+            wave=.76*Math.sin(phase+vibrato)+.24*Math.sin(2*phase+2*vibrato)+.12*Math.sin(3*phase);
+            attack=.042;
+          }else if(kind==="drum"){
+            wave=Math.sin(2*Math.PI*(56*t+1.8*(1-Math.exp(-32*t))))*Math.exp(-15*t);
+            attack=.004;
+          }else{
+            const noise=Math.random()*2-1;
+            wave=(.55*Math.sin(phase)+.33*(noise-previous))*Math.exp(-29*t);
+            previous=noise;
+            attack=.003;
+          }
+          sound[i]=wave*Math.min(1,t/attack)*tail*tail;
         }
-        cache.set(key,sound);
+        notes.set(key,sound);
       }
-      const offset=Math.round(step*tick*rate);
-      for (let i=0;i<sound.length;i++) mix[(offset+i)%mix.length]+=sound[i]*level;
+      const offset=Math.round(start*beat*rate);
+      for(let i=0;i<sound.length;i++)mix[(offset+i)%mix.length]+=gain*sound[i];
     }
-    const roots=[38,38,34,36,38,41,39,33,38,38,34,36,43,39,33,33];
-    roots.forEach((root,bar)=>{
-      const start=bar*16;
-      const riff=bar%2 ? [0,3,6,8,11,14] : [0,2,5,8,10,13];
-      riff.forEach((beat,i)=>note("bass",root+[0,0,7,0,12,7][i],start+beat,1.65,.075));
-      for(const beat of [0,6,8,bar%2?14:11]) note("kick",0,start+beat,1.7,.106);
-      for(const beat of [4,12]) note("snare",52,start+beat,1.3,.065);
-      for(let beat=0;beat<16;beat+=2) note("hat",0,start+beat,.48,beat%4?.027:.017);
-      const accents=bar<8 ? [3,10] : [1,6,10,14];
-      accents.forEach((beat,i)=>{
-        const pitch=root+24+([0,7,3,7][i]);
-        note("stab",pitch,start+beat,1.45,.048);
-        note("stab",pitch+7,start+beat,1.12,.022);
+    const chords=[[40,55,59],[36,52,55],[43,54,59],[38,54,57],
+                  [40,55,59],[33,52,57],[36,52,55],[35,51,57]];
+    const tune=[[64,67,71],[69,67],[71,74,71],[69,66],
+                [67,71,76],[72,69],[67,64,66],[63,66,71]];
+    for(let bar=0;bar<16;bar++){
+      const start=bar*4, chord=chords[bar%8], line=tune[bar%8];
+      voice("strings",chord[0],start,4,.083);
+      voice("strings",chord[1],start,4,.043);
+      voice("strings",chord[2],start,4,.033);
+      const lengths=line.length===3 ? [1.5,.5,2] : [2.5,1.5];
+      let cursor=start;
+      line.forEach((pitch,i)=>{
+        voice("horn",pitch,cursor,lengths[i],.059);
+        if(bar>=8)voice("strings",pitch-12,cursor,lengths[i],.026);
+        cursor+=lengths[i];
       });
-      if(bar%4===3) for(const beat of [13,15]) note("snare",50,start+beat,.7,.038);
-    });
+      for(const pulse of [0,2,2.75])voice("drum",0,start+pulse,.5,.085);
+      for(const pulse of [1,3])voice("snare",51,start+pulse,.35,.046);
+      if(bar%4===3)voice("snare",49,start+3.5,.25,.031);
+    }
     this.music = b.createBufferSource();
     this.music.buffer = buffer;
     this.music.loop = true;
