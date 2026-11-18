@@ -1573,7 +1573,11 @@ class ge extends Lt.Scene {
         const pulse = t.surge ? (Math.cos(t.gait) > 0.75 ? 1 + t.surge : 0.55) : 1;
         const chillSpeed = chilled ? (t.boss ? .8 : .55) : 1;
         const step = t.speed * (t.slow || 1) * chillSpeed * K * pulse / (h * Math.hypot(1, side));
+        const previousEnemyX = t.s.x;
         this.defenses.move(t.s, (l - c * side) * step, (c + l * side) * step, t.r);
+        if (t.kind === "hound" && Math.abs(t.s.x - previousEnemyX) > 0.01) {
+          t.s.setFlipX(t.s.x < previousEnemyX);
+        }
       }
       if (
         ((t.s.rotation = Math.sin(b * 0.008 + t.s.x) * 0.07),
