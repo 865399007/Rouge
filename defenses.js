@@ -88,14 +88,22 @@ export class Defenses {
   refresh() {
     if (this.selectedTower) this.refreshUpgrade(this.selectedTower);
     this.counter.textContent = `材料 ◆ ${this.stock}`;
+    this.refreshBuildButtons();
+  }
+  siteOccupied() {
+    return this.towers.some(t => this.overlaps(t, this.scene.player, halfTower));
+  }
+  refreshBuildButtons() {
+    const blocked = this.scene.mode !== "play" || this.siteOccupied();
     this.buttons.forEach((button, i) => {
-      button.disabled = this.stock < types[i].cost;
+      const disabled = blocked || this.stock < types[i].cost;
+      if (button.disabled !== disabled) button.disabled = disabled;
     });
   }
   buildAtPlayer(type) {
     if (this.scene.mode !== "play" || this.stock < type.cost) return;
     const p = this.scene.player;
-    if (this.towers.some(t => this.overlaps(t, p, halfTower))) {
+    if (this.siteOccupied()) {
       this.counter.textContent = `此处已有防御塔 · ◆ ${this.stock}`;
       return;
     }
@@ -305,6 +313,7 @@ export class Defenses {
   update(dt) {
     const scene = this.scene, player = scene.player;
     if (scene.mode !== "play") return;
+    this.refreshBuildButtons();
     for (let i = this.drops.length - 1; i >= 0; i--) {
       const drop = this.drops[i];
       const { sprite, value, kind } = drop,

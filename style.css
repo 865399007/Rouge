@@ -1502,7 +1502,7 @@ kbd {
 .action-pad #tower-tools button img { width: 90%; height: 100%; min-height: 0; object-fit: contain; }
 .action-pad .tower-caption { width: 100%; display: flex; justify-content: space-evenly; align-items: baseline; font-size: 10px; line-height: 12px; color: #332c20; }
 .action-pad #tower-tools small { margin: 0; font-size: 9px; color: #514733; }
-.action-pad #tower-tools button:disabled { opacity: 0.82; filter: saturate(0.72); border-color: #827961; box-shadow: none; }
+.action-pad #tower-tools button:disabled { opacity: 0.82; filter: grayscale(1); border-color: #827961; box-shadow: none; }
 #roll {
   position: relative;
   inset: auto;
@@ -1591,3 +1591,22 @@ kbd {
 .lobby-result { color:#355c36; font-weight:bold; }
 
 .stage-grid button:disabled { filter:grayscale(1); background:#d8d6d0; color:#5e5d58; border-color:#8c8981; }
+
+@media (orientation: landscape) and (pointer: coarse) {
+  .action-pad { inset: 0; display: block; }
+  .action-pad #tower-tools {
+    position: absolute; display: grid; top: 50%; bottom: auto; left: auto;
+    right: max(4%, env(safe-area-inset-right)); transform: translateY(-50%);
+    grid-template-columns: clamp(40px, 10vh, 64px); gap: 4px;
+  }
+  .action-pad #tower-tools button {
+    width: 100%; height: clamp(40px, 10vh, 64px); background: rgb(249 241 220 / 25%);
+  }
+  .action-pad #roll {
+    position: absolute; left: 91%; top: 86.5%; transform: translate(-50%, -50%);
+    width: clamp(54px, 17vh, 88px); height: clamp(54px, 17vh, 88px);
+    margin: 0; pointer-events: auto; background: rgb(249 241 220 / 25%);
+  }
+  .game-top > #pause, .game-top .settings summary { width: 48px; height: 48px; }
+  .game-top svg { width: 30px; height: 30px; }
+}

@@ -154,8 +154,9 @@ class ee {
         if (!this.ctx) {
           ((this.ctx = new b()),
             (this.master = this.ctx.createGain()),
-            (this.limiter = this.ctx.createDynamicsCompressor()),
-            this.master.connect(this.limiter).connect(this.ctx.destination),
+            (this.limiter = this.ctx.createDynamicsCompressor?.() || this.ctx.createGain()),
+            this.master.connect(this.limiter),
+            this.limiter.connect(this.ctx.destination),
             (this.master.gain.value = this.muted ? 0 : this.volume),
             (this.noise = this.ctx.createBuffer(
               1,
@@ -167,8 +168,12 @@ class ee {
           this.impacts = new ImpactAudio(this.ctx, this.master);
           this.ambience();
         }
-        this.ctx.state === "suspended" && (await this.ctx.resume());
-      } catch {}
+        if (this.ctx.state === "suspended" || this.ctx.state === "interrupted") await this.ctx.resume?.();
+      } catch (error) {
+        this.ctx?.close?.();
+        this.ctx = this.master = this.impacts = this.ambientGain = null;
+        console.warn("音频初始化失败", error);
+      }
   }
   setVolume(b) {
     ((this.volume = Math.max(0, Math.min(1, b))), this.refresh());
@@ -262,7 +267,7 @@ class ee {
   }) {
     if (
       !this.ctx ||
-      this.ctx.state !== "running" ||
+      (this.ctx.state && this.ctx.state !== "running") ||
       this.muted ||
       document.hidden ||
       this.voices >= 28
@@ -283,7 +288,7 @@ class ee {
       h.gain.setValueAtTime(0, c),
       h.gain.linearRampToValueAtTime(Q, c + 0.008),
       h.gain.exponentialRampToValueAtTime(0.001, c + K),
-      r.connect(n).connect(h).connect(this.master),
+      r.connect(n), n.connect(h), h.connect(this.master),
       this.voices++,
       (r.onended = () => {
         (r.disconnect(), n.disconnect(), h.disconnect(), this.voices--);

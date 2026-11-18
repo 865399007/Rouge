@@ -43,6 +43,7 @@ function fixture() {
     stock: 0,
     width: 2000,
     height: 2000,
+    buttons: [],
     refresh() {},
   });
   d.scene = {

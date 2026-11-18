@@ -59,7 +59,8 @@ export class ImpactAudio {
     source.buffer = this.sample(Object.hasOwn(sweeps,element) ? element : "basic");
     source.playbackRate.value = .93+Math.random()*.14;
     gain.gain.value = (hurt ? 1.45 : periodic ? .5 : 1.1)/Math.sqrt(1+slot*.36);
-    source.connect(gain).connect(this.output);
+    source.connect(gain);
+    gain.connect(this.output);
     source.onended = () => { source.disconnect(); gain.disconnect(); };
     source.start(now+(slot%8)*.012);
   }
