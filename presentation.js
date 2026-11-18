@@ -363,10 +363,13 @@ export function updatePresentation(scene, moving) {
     .padStart(2, "0")}`;
   const next = scene.bossTimes.find((t) => !scene.nodes.has(t));
   const warning = document.getElementById("boss-warning");
-  warning.hidden =
-    next === undefined || next - scene.runTime > BALANCE.bossWarning;
-  if (!warning.hidden)
-    warning.textContent = `${next === 540 ? "最终首领" : "街区首领"}将在 ${Math.max(0, Math.ceil(next - scene.runTime))} 秒后抵达`;
+  const imminent = next !== undefined && next - scene.runTime <= BALANCE.bossWarning;
+  const stage = scene.encounter;
+  let notice = "";
+  if (imminent) notice = `${next === 540 ? "最终首领" : "街区首领"}将在 ${Math.max(0, Math.ceil(next - scene.runTime))} 秒后抵达`;
+  else if (stage && scene.runTime - stage.start < 5) notice = stage.name;
+  if (warning.textContent !== notice) warning.textContent = notice;
+  warning.hidden = !notice;
   document
     .getElementById("game")
     .classList.toggle("low-health", scene.hp / scene.maxHp < 0.3);

@@ -116,13 +116,14 @@ export const skills = [
 }));
 
 export function renderLoadout(panel, equipped) {
-  const key = equipped.map((skill) => skill.id + skill.level).join(",");
+  const key = equipped.map((skill) => skill.id + skill.level + (skill.branch || "")).join(",");
   if (panel.dataset.skills === key) return;
   panel.dataset.skills = key;
   panel.replaceChildren(
     ...equipped.map((skill) => {
       const slot = document.createElement("span");
-      slot.title = slot.ariaLabel = skill.name + " Lv." + skill.level;
+      slot.title = slot.ariaLabel = skill.name + " Lv." + skill.level +
+        (skill.branch ? " · " + (skill.branch === "spread" ? "扩散" : "回流") : "");
       slot.innerHTML = icon(skill.id);
       const level = document.createElement("small");
       level.textContent = skill.level;

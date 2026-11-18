@@ -1,3 +1,5 @@
+import { ImpactAudio } from "./impact-audio.js";
+import { encounterAt, encounterAngle, replacementTimes, updateSupply, updateBossRing } from "./encounters.js";
 import {
   BALANCE,
   xpToNext,
@@ -161,6 +163,7 @@ class ee {
             )));
           const Y = this.noise.getChannelData(0);
           for (let K = 0; K < Y.length; K++) Y[K] = Math.random() * 2 - 1;
+          this.impacts = new ImpactAudio(this.ctx, this.master);
           this.ambience();
         }
         this.ctx.state === "suspended" && (await this.ctx.resume());
@@ -287,11 +290,14 @@ class ee {
       r.start(c),
       r.stop(c + K + 0.02));
   }
+  impact(element, periodic = false) {
+    if (!this.muted && !document.hidden) this.impacts?.play(element, periodic);
+  }
   play(b) {
     if (!this.ctx || this.muted || document.hidden) return;
     const Y = this.ctx.currentTime,
       K =
-        { hit: 0.055, kill: 0.12, pickup: 0.1, chain: 0.12, aura: 0.25 }[b] ||
+        { kill: 0.12, pickup: 0.1, chain: 0.12, aura: 0.25 }[b] ||
         0.04;
     if (Y - (this.last.get(b) ?? -1 / 0) < K) return;
     this.last.set(b, Y);
@@ -319,6 +325,10 @@ class ee {
       case "fire":
         Q(300, 900, 0.2, 0.11, "sine");
         break;
+      case "shieldReturn":
+        Q(710,1050,0.09,0.10,"sine");
+        Q(1040,1420,0.12,0.08,"triangle",0.055);
+        break;
       case "blade":
         Z(0.18, 0.22, 2800);
         break;
@@ -329,14 +339,8 @@ class ee {
       case "explosion":
         (Z(0.28, 0.27, 650), Q(110, 30, 0.25, 0.2));
         break;
-      case "hit":
-        (Z(0.07, 0.24, 1400), Q(180, 65, 0.09, 0.18));
-        break;
       case "kill":
         (Q(150, 42, 0.18, 0.23), Z(0.11, 0.18, 900));
-        break;
-      case "hurt":
-        Q(240, 70, 0.22, 0.19, "sawtooth");
         break;
       case "pickup":
         Q(1e3, 1500, 0.055, 0.035, "sine");
@@ -508,6 +512,7 @@ class ge extends Lt.Scene {
       (yt("volume").oninput = (b) =>
         pt.setVolume(Number(b.target.value) / 100)),
       (this.hitStopUntil = 0),
+      (this.healthyTexture = null),
       (this.lastHitStop = -1000),
       (this.lastAttackShake = -Infinity),
       (this.build = new fe()),
@@ -516,7 +521,11 @@ class ge extends Lt.Scene {
       (this.mount = null),
       (this.buffIcons = this.add.container().setDepth(11)),
       (this.accumulator = 0),
-      (this.bossTimes = [...BALANCE.bosses]),
+      (this.bossTimes = BALANCE.bosses.filter(t => !replacementTimes.includes(t))),
+      (this.encounter = null),
+      (this.supply = null),
+      (this.supplyClaimed = false),
+      (this.bountySpawned = false),
       (this.nodes = new Set()),
       (this.hostile = []),
       (this.hp = 100),
@@ -767,26 +776,40 @@ class ge extends Lt.Scene {
         K.sprite.setScale(1 + K.grow * (1 - K.life / K.total)));
     }
   }
-  flashEnemy(enemy) {
-    const sprite = enemy.s;
-    const key = (enemy.normalTexture ??= sprite.texture.key);
-    const red = key + "-hit";
+  flashTexture(sprite, key, suffix, color) {
+    const red = key + suffix;
     if (!this.textures.exists(red)) {
       const source = this.textures.get(key).getSourceImage();
       const tex = this.textures.createCanvas(red, source.width, source.height);
       const ctx = tex.getContext();
       ctx.drawImage(source, 0, 0);
       ctx.globalCompositeOperation = "source-atop";
-      ctx.fillStyle = "rgba(255, 238, 191, 0.5)";
+      ctx.fillStyle = color;
       ctx.fillRect(0, 0, source.width, source.height);
       tex.refresh();
     }
     sprite.setTexture(red);
+  }
+  flashEnemy(enemy) {
+    const key = (enemy.normalTexture ??= enemy.s.texture.key);
+    this.flashTexture(enemy.s, key, "-hit", "rgba(255,238,191,.5)");
     enemy.flashUntil = this.combat.time + 0.1;
+  }
+  playerHurt() {
+    this.healthyTexture = this.healthyTexture || this.player.texture.key;
+    this.flashTexture(this.player, this.healthyTexture, "-hurt", "rgba(255,35,40,.78)");
+    this.player.setAlpha(1);
+    this.hurtUntil = this.combat.time + .18;
+    pt.impact("hurt");
+    this.hitStop(145, true);
+  }
+  hitStop(duration, priority = false) {
     const now = performance.now();
-    if (now - this.lastHitStop > 180) {
+    if (now < this.hitStopUntil) {
+      this.hitStopUntil = Math.max(this.hitStopUntil, this.lastHitStop + duration);
+    } else if (priority || now - this.lastHitStop > 360) {
       this.lastHitStop = now;
-      this.hitStopUntil = now + 45;
+      this.hitStopUntil = now + duration;
       this.accumulator = 0;
     }
   }
@@ -796,6 +819,7 @@ class ge extends Lt.Scene {
     const actual = Math.min(enemy.hp, amount * (crit ? 1.5 : 1));
     enemy.hp = Math.max(0, enemy.hp - actual);
     this.damageNumbers.add(enemy, actual, { ...meta, crit });
+    if (actual > 0) pt.impact(meta.element, meta.dot);
     if (!meta.dot) {
       if (!enemy.boss && !enemy.ranged) enemy.contactBlockedUntil = this.combat.time + 0.2;
       // One restrained kick per burst; damage-over-time never shakes the view.
@@ -811,11 +835,12 @@ class ge extends Lt.Scene {
           false,
         );
       }
-      pt.play("hit");
+      this.hitStop(crit || enemy.hp <= 0 ? 110 : 80);
       this.impact(enemy.s.x, enemy.s.y, color, crit, enemy.hp <= 0);
       this.flashEnemy(enemy);
     }
     if (enemy.hp <= 0) {
+      if (enemy.bounty) enemy.materials += 3;
       this.defenses.drop(enemy);
       pt.play("kill");
       const gem = this.add.image(enemy.s.x, enemy.s.y, "gem").setDepth(2);
@@ -830,6 +855,14 @@ class ge extends Lt.Scene {
       this.sync();
     }
     return actual;
+  }
+  shieldReturnFeedback(enemy) {
+    const {x,y} = enemy.s;
+    const cut = this.add.graphics({x,y}).setDepth(9)
+      .lineStyle(7,0xeaac3b).lineBetween(-17,12,17,-12)
+      .lineStyle(2,0xfff5ba).lineBetween(-19,14,19,-14);
+    this.effect(cut,0.3,0,-12,0.5);
+    pt.play("shieldReturn");
   }
   distance(b, Y) {
     return Math.hypot(b.x - Y.x, b.y - Y.y);
@@ -1102,6 +1135,10 @@ class ge extends Lt.Scene {
         detail: upgradeDescription(choice, this.build),
         action: () => {
           if (!this.build.apply(choice, this)) return;
+          if (choice.id === "arc" && choice.level === 5) {
+            this.chooseArcEvolution();
+            return;
+          }
           this.closePanel();
           this.mode = "play";
           this.sync();
@@ -1111,6 +1148,22 @@ class ge extends Lt.Scene {
       })),
     );
     this.sync();
+  }
+  chooseArcEvolution() {
+    const arc = this.build.active.find(skill => skill.id === "arc");
+    this.showUpgradeCards("闪电链 · 选择进化", "本局永久生效", [
+      ["spread","扩散","击杀时从落点向附近另两名敌人放出电弧，各造成基础伤害的 60%。"],
+      ["return","回流","无新目标可跳跃时，对最后一个存活目标追加一次基础伤害的 85%。"],
+    ].map(([branch,name,detail]) => ({
+      id:"arc", title:name, levelText:"满级进化", detail,
+      action: () => {
+        arc.branch = branch;
+        this.closePanel();
+        this.mode = "play";
+        this.sync();
+        if (this.xp >= this.need) this.upgrade();
+      },
+    })));
   }
   spawnBoss(time) {
     const index = BALANCE.bosses.indexOf(time);
@@ -1170,6 +1223,10 @@ class ge extends Lt.Scene {
   step(b, Y) {
     if ((pt.setActive(this.mode === "play"), this.mode !== "play")) return;
     let K = Math.min(Y, 50) / 1e3;
+    if (this.healthyTexture && this.combat.time >= this.hurtUntil) {
+      this.player.setTexture(this.healthyTexture);
+      this.healthyTexture = null;
+    }
     (this.updateEffects(K),
       this.damageNumbers.update(K),
       (this.recoil = Math.max(0, this.recoil - K * 60)),
@@ -1225,9 +1282,16 @@ class ge extends Lt.Scene {
         );
       this.player.rotation = S ? Math.sin(b * 0.018) * 0.08 : 0;
     }
+    const encounter = encounterAt(this.runTime);
+    if (encounter !== this.encounter) {
+      this.encounter = encounter;
+      this.encounterHeading = this.build.random()*Math.PI*2;
+      this.encounterBatch = 0;
+    }
+    updateSupply(this,K);
     if (
       (this.defenses.confine(this.player, 25),
-      this.player.setAlpha(this.invincible > 0 ? 0.55 : 1),
+      this.player.setAlpha(this.invincible > 0 && !this.healthyTexture ? 0.55 : 1),
       this.ring.setPosition(this.player.x, this.player.y + 14),
       (this.cleanupClock -= K),
       this.cleanupClock <= 0 &&
@@ -1240,45 +1304,51 @@ class ge extends Lt.Scene {
         (this.gems = this.gems.filter((t) =>
           this.distance(this.player, t) > 1800 ? (t.destroy(), !1) : !0,
         ))),
-      this.runTime < BALANCE.duration &&
+      encounter?.count !== 0 && this.runTime < BALANCE.duration &&
         this.spawnClock <= 0 &&
         this.enemies.length < BALANCE.enemyCap)
     ) {
-      this.spawnClock = spawnInterval(
+      this.spawnClock = encounter?.interval ?? spawnInterval(
         this.runTime,
         this.enemies.some((e) => e.boss),
       );
-      const count = Math.min(packSize(this.runTime), BALANCE.enemyCap - this.enemies.length);
+      const count = Math.min(encounter?.count ?? packSize(this.runTime), BALANCE.enemyCap - this.enemies.length);
       const heading = this.build.random() * Math.PI * 2;
       for (let i = 0; i < count; i++) {
-        const angle = heading + (i - (count - 1) / 2) * 0.11;
+        const angle = encounter ? encounterAngle(encounter,this.encounterHeading,this.encounterBatch,i)
+          : heading + (i - (count - 1) / 2) * 0.11;
         const point = this.defenses.spawn(
           Math.cos(angle) * 520,
           Math.sin(angle) * 430,
         );
         if (point) {
-          const elite = this.runTime >= this.nextEliteAt;
+          const bounty = encounter?.start === 120 && !this.bountySpawned;
+          const elite = bounty || this.runTime >= this.nextEliteAt;
           const kind = elite
             ? "brute"
+            : encounter ? encounter.kinds[(i + (encounter.crossfire ? 0 : this.encounterBatch)) % encounter.kinds.length]
             : enemyKind(this.runTime, this.build.random());
           this.enemies.push({
             ...(elite
               ? eliteStats(this.runTime)
               : enemyStats(kind, this.runTime)),
-            kind,
+            kind, bounty,
             s: this.add
               .image(point.x, point.y, kind)
               .setDepth(4)
               .setScale(elite ? 1.25 : 1),
           });
+          if (bounty) this.bountySpawned = true;
           if (elite) this.nextEliteAt = this.runTime + BALANCE.elites.interval;
         }
       }
+      this.encounterBatch++;
     }
     this.enemyTelegraphs.clear();
     for (let t of this.enemies) {
       this.defenses.confine(t.s, t.r);
       if (t.elite || t.boss) {
+        if (t.bounty) this.enemyTelegraphs.lineStyle(3,0xffdc63).strokeCircle(t.s.x,t.s.y,t.r+10);
         const color = t.boss ? 0xe17055 : 0xf4c875;
         const x = t.s.x,
           y = t.s.y - (t.boss ? t.s.displayHeight / 2 : t.r) - 10;
@@ -1304,8 +1374,9 @@ class ge extends Lt.Scene {
         t.frozenUntil = 0;
       }
 
+      const ringAttack = t.final && updateBossRing(this,t,K);
       const attackTarget = this.player;
-      if ((t.ranged || t.boss) && t.shot < 0.55) {
+      if (!ringAttack && (t.ranged || t.boss) && t.shot < 0.55) {
         const a = Math.atan2(attackTarget.y - t.s.y, attackTarget.x - t.s.x);
         this.enemyTelegraphs
           .lineStyle(2, 0xe16b4a, 0.8)
@@ -1330,7 +1401,7 @@ class ge extends Lt.Scene {
       }
       if (
         ((t.s.rotation = Math.sin(b * 0.008 + t.s.x) * 0.07),
-        (t.ranged || t.boss) &&
+        !ringAttack && (t.ranged || t.boss) &&
           ((t.shot = (t.shot ?? 2) - K),
           t.shot <= 0 &&
             ((t.shot = t.shotCooldown ?? 2.4), this.hostile.length < 100)))
@@ -1353,7 +1424,6 @@ class ge extends Lt.Scene {
         this.invincible <= 0 &&
         (this.combat.receive(t.damage ?? 9, t),
         (this.invincible = BALANCE.player.invulnerability),
-        pt.play("hurt"),
         this.sync(),
         this.hp <= 0)
       ) {
@@ -1375,7 +1445,7 @@ class ge extends Lt.Scene {
         const c = Math.atan2(this.player.y - l.s.y, this.player.x - l.s.x);
         ((l.vx = Math.cos(c) * (l.returnSpeed ?? 430)),
           (l.vy = Math.sin(c) * (l.returnSpeed ?? 430)),
-          l.returned || (l.hit.clear(), (l.returned = !0)));
+          l.returned || (l.outboundHits = l.hit, l.hit = new Set(), l.returned = true));
       }
       if (this.combat.intercept(l, K)) {
         l.s.destroy();
@@ -1412,7 +1482,8 @@ class ge extends Lt.Scene {
         if (
           !l.hit.has(c) &&
           Lt.Math.Distance.Between(l.s.x, l.s.y, c.s.x, c.s.y) < c.r + 5 &&
-          (l.hit.add(c),
+          (l.returned && l.outboundHits?.has(c) && this.shieldReturnFeedback(c),
+          l.hit.add(c),
           l.explosive
             ? (this.explode(l.s.x, l.s.y, l.damage, l.color, l.blastRadius),
               (l.explosive = !1))

@@ -101,6 +101,7 @@ export class Combat {
       s.mount.shield -= absorbed;
       damage -= absorbed;
     }
+    if (damage > 0 && s.hp > 0) s.playerHurt();
     s.hp = Math.max(0, s.hp - damage);
     s.impact(s.player.x, s.player.y, 0xef796a, false, false);
     s.cameras.main.shake(80, 0.002);
@@ -231,22 +232,36 @@ export class Combat {
       return;
     }
     if (type === "chain") {
-      let from = s.player;
+      let from = s.player, last = null;
       const used = new Set();
-      for (let i = 0; i < stat.links; i++) {
-        const next = this.hash
-          .query(from.x, from.y, i ? 165 : stat.radius)
-          .filter((e) => !used.has(e))
-          .sort((a, b) => s.distance(from, a.s) - s.distance(from, b.s))[0];
-        if (!next) break;
-        const point = { x: next.s.x, y: next.s.y },
-          g = s.add.graphics().setDepth(8);
-        this.cancelLine(from,point,3);
-        drawArc(g, from, point, color, skill.level);
+      const strike = (origin, enemy, amount) => {
+        const point = { x: enemy.s.x, y: enemy.s.y };
+        const g = s.add.graphics().setDepth(8);
+        this.cancelLine(origin,point,3);
+        drawArc(g, origin, point, color, skill.level);
         s.effect(g, 0.18);
-        used.add(next);
-        this.damage(next, damage * stat.decay ** i, skill.element);
-        from = point;
+        used.add(enemy);
+        this.damage(enemy, amount, skill.element);
+        return point;
+      };
+      const nearby = (origin, range) => this.hash.query(origin.x,origin.y,range)
+        .filter(e => !used.has(e))
+        .sort((a,b) => s.distance(origin,a.s) - s.distance(origin,b.s));
+      for (let i = 0; i < stat.links && s.mode === "play"; i++) {
+        const next = nearby(from, i ? 165 : stat.radius)[0];
+        if (!next) {
+          if (skill.branch === "return" && last?.s.active) {
+            strike(s.player,last,damage * 0.85);
+          }
+          break;
+        }
+        from = strike(from,next,damage * stat.decay ** i);
+        last = next;
+        if (skill.branch === "spread" && !next.s.active) {
+          for (const extra of nearby(from,200).slice(0,2)) {
+            if (s.mode === "play") strike(from,extra,damage * 0.6);
+          }
+        }
       }
       return;
     }
