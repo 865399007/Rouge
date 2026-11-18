@@ -156,11 +156,11 @@ export class Defenses {
     this.refresh();
   }
   drop(enemy){
-    if(!enemy.boss && this.scene.build.random()>=.32)return;
+    if(!enemy.boss)return;
     const sprite=this.scene.add.rectangle(enemy.s.x,enemy.s.y,12,12,0xfac969)
       .setAngle(45).setStrokeStyle(2,0x725527).setDepth(3);
     this.confine(sprite,12);
-    this.drops.push({sprite,value:enemy.boss?4:1});
+    this.drops.push({sprite,value:4});
   }
   update(dt){
     const scene=this.scene, player=scene.player;
