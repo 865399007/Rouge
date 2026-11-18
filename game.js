@@ -202,59 +202,62 @@ class ee {
     ((this.ambientGain = b.createGain()),
       (this.ambientGain.gain.value = this.active ? 1 : 0),
       this.ambientGain.connect(this.master));
-    const Y = 60 / 96,
-      K = Y * 32,
-      Q = b.sampleRate,
-      Z = b.createBuffer(1, Math.ceil(K * Q), Q),
-      p = Z.getChannelData(0),
-      S = (c, h, r, n, e = !1) => {
-        const s = 440 * 2 ** ((c - 69) / 12),
-          a = Math.floor(r * Q),
-          i = Math.floor(h * Q);
-        for (let o = 0; o < a; o++) {
-          const u = o / Q,
-            d =
-              Math.min(1, u / 0.025) *
-              Math.min(1, (r - u) / 0.12) *
-              Math.exp(-u * (e ? 3 : 1)),
-            f =
-              Math.sin(2 * Math.PI * s * u) +
-              (e ? 0.22 : 0.1) * Math.sin(4 * Math.PI * s * u);
-          p[(i + o) % p.length] += f * d * n;
+    // A lilting 6/8 score. Each bar has its own melody and space for combat sounds.
+    const eighth = 60 / 78 / 3;
+    const bars = [
+      [[50,57,61,66], [[0,69,2],[2,66,1],[3,64,2]]],
+      [[47,54,57,62], [[0,62,3],[4,66,2]]],
+      [[43,50,59,62], [[0,67,2],[2,66,1],[3,62,3]]],
+      [[45,52,59,61], [[1,64,2],[3,61,2]]],
+      [[50,57,61,66], [[0,66,2],[2,69,1],[3,73,2]]],
+      [[42,49,57,61], [[0,71,3],[4,69,1],[5,66,1]]],
+      [[43,50,57,59], [[0,67,3],[3,62,2]]],
+      [[45,52,57,61], [[1,64,1],[2,66,1],[3,69,3]]],
+      [[47,54,57,62], [[0,71,2],[2,69,1],[3,66,2]]],
+      [[43,50,59,62], [[0,67,3],[4,64,2]]],
+      [[45,52,59,61], [[0,62,2],[2,61,1],[3,64,2]]],
+      [[50,57,61,66], [[0,62,5]]],
+    ];
+    const rate = 24000;
+    const buffer = b.createBuffer(1, Math.round(bars.length * 6 * eighth * rate), rate);
+    const mix = buffer.getChannelData(0);
+    const samples = new Map();
+    function playNote(pitch, start, beats, lead, level) {
+      const key = [pitch, beats, lead].join("/");
+      let sample = samples.get(key);
+      if (!sample) {
+        const sustain = beats * eighth;
+        sample = new Float32Array(Math.ceil((sustain + 0.32) * rate));
+        const omega = 2 * Math.PI * 440 * 2 ** ((pitch - 69) / 12);
+        for (let i = 0; i < sample.length; i++) {
+          const t = i / rate, phase = omega * t;
+          const release = Math.max(0, 1 - Math.max(0, t - sustain) / 0.32);
+          const envelope = Math.min(1, t / (lead ? 0.012 : 0.022)) * release ** 2;
+          const body = Math.sin(phase) + 0.27 * Math.sin(2 * phase) * Math.exp(-5*t);
+          const tine = lead ? 0.17 * Math.sin(3.01 * phase) * Math.exp(-7*t) : 0;
+          sample[i] = envelope * Math.exp(-(lead ? 1.7 : 2.8)*t) * (body + tine);
         }
-      },
-      t = [
-        [57, 60, 64],
-        [53, 57, 60],
-        [60, 64, 67],
-        [55, 59, 62],
-      ],
-      l = [
-        [76, 72, 71, 69, 72, 76, 79, 76],
-        [72, 69, 65, 69, 72, 74, 72, 69],
-        [76, 79, 76, 72, 74, 76, 72, 67],
-        [74, 71, 67, 71, 74, 72, 71, 69],
-      ];
-    for (let c = 0; c < 8; c++) {
-      const h = c * 4 * Y,
-        r = t[c % 4];
-      r.forEach((n) => S(n, h, 3.8 * Y, 0.025));
-      for (let n = 0; n < 4; n++) S(r[0] - 24, h + n * Y, Y * 0.75, 0.07);
-      l[c % 4].forEach((n, e) =>
-        S(
-          n + (c >= 4 && e === 7 ? 12 : 0),
-          h + (e * Y) / 2,
-          Y * 0.7,
-          0.065,
-          !0,
-        ),
-      );
+        samples.set(key, sample);
+      }
+      const offset = Math.round(start * eighth * rate);
+      for (let i = 0; i < sample.length; i++) mix[(offset+i) % mix.length] += level * sample[i];
     }
-    ((this.music = b.createBufferSource()),
-      (this.music.buffer = Z),
-      (this.music.loop = !0),
-      this.music.connect(this.ambientGain),
-      this.music.start());
+    bars.forEach(([chord, melody], bar) => {
+      const start = bar * 6;
+      playNote(chord[0], start, 3.5, false, 0.085);
+      playNote(chord[1], start + 1, 2, false, 0.042);
+      playNote(chord[2], start + 3, 2, false, 0.043);
+      playNote(chord[3], start + 3.08, 2, false, 0.036);
+      for (const [beat, pitch, length] of melody) {
+        playNote(pitch, start + beat, length, true, 0.105);
+        playNote(pitch, start + beat + 0.68, length, true, 0.014);
+      }
+    });
+    this.music = b.createBufferSource();
+    this.music.buffer = buffer;
+    this.music.loop = true;
+    this.music.connect(this.ambientGain);
+    this.music.start();
   }
   voice({
     frequency: b = 200,
