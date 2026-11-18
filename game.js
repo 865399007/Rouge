@@ -876,7 +876,12 @@ class ge extends Lt.Scene {
       }
       this.hitStop(100);
       const angle = Math.atan2(enemy.s.y-this.player.y, enemy.s.x-this.player.x);
-      enemy.knockback = {x:Math.cos(angle), y:Math.sin(angle), peak:enemy.boss ? 7 : 18, elapsed:0, travel:0};
+      const baseX = enemy.knockback?.baseX ?? enemy.s.scaleX;
+      const baseY = enemy.knockback?.baseY ?? enemy.s.scaleY;
+      const squash = (crit ? .22 : .16) * (enemy.boss ? .6 : 1);
+      enemy.knockback = {x:Math.cos(angle), y:Math.sin(angle), peak:enemy.boss ? 7 : 18,
+        elapsed:0, travel:0, baseX, baseY, squash};
+      enemy.s.setScale(baseX*(1+squash), baseY/(1+squash));
       enemy.hitArt = (enemy.hitArt || []).filter(sprite => sprite.active);
       this.hitEffectOwner = enemy;
       this.impact(enemy.s.x, enemy.s.y, color, crit, enemy.hp <= 0);
@@ -930,7 +935,17 @@ class ge extends Lt.Scene {
       const step = push.travel * .65 * (from*from - to*to);
       this.defenses.move(enemy.s, -push.x*step, -push.y*step, enemy.r);
     }
-    if (push.elapsed >= outward+rebound) enemy.knockback = null;
+    // Compress on contact, stretch at peak recoil, then settle at the original size.
+    const returning = push.elapsed >= outward;
+    const phase = returning ? (push.elapsed-outward)/rebound : push.elapsed/outward;
+    const eased = phase*phase*(3-2*phase);
+    const ratio = returning ? 1-.55*push.squash*(1-eased) : 1+push.squash*(1-1.55*eased);
+    if (push.elapsed >= outward+rebound) {
+      enemy.s.setScale(push.baseX,push.baseY);
+      enemy.knockback = null;
+    } else {
+      enemy.s.setScale(push.baseX*ratio,push.baseY/ratio);
+    }
     return true;
   }
   settleDefeated(dt) {
