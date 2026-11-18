@@ -1,5 +1,5 @@
 import {attachBrowserHud, preloadHud} from './browser-hud.js';
-import { stages, stageWaves, loadLobby, saveLobby, renderLobby, rewardVictory } from "./lobby.js?v=stage-lock-1";
+import { stages, stageWaves, waveSeconds, loadLobby, saveLobby, renderLobby, rewardVictory } from "./lobby.js?v=four-minute-waves";
 import { ImpactAudio } from "./impact-audio.js";
 import { encounterAngle, updateSupply, updateBossRing } from "./encounters.js";
 import {
@@ -26,9 +26,9 @@ import {
   drawStatusEffects,
   drawOrbit,
   drawArc,
-} from "./presentation.js?v=stage-lock-1";
+} from "./presentation.js?v=four-minute-waves";
 import Lt from "./vendor/phaser.js";
-import { Defenses, advancePickupFlight } from "./defenses.js?v=stage-lock-1";
+import { Defenses, advancePickupFlight } from "./defenses.js?v=four-minute-waves";
 import { segmentCircleEntry } from "./geometry.js";
 import { updateMount } from "./mounts.js";
 import { Roll } from "./roll.js";
@@ -1413,22 +1413,15 @@ class ge extends Lt.Scene {
       ));
     this.settleDefeated(K);
     let encounter = this.waves[this.wave - 1];
-    if (this.waveSpawned === encounter.total && this.enemies.length === 0 && !this.defeatedEnemies.length) {
+    if (this.runTime + 1e-8 >= this.wave * waveSeconds) {
       if (this.wave === this.waves.length) {
         this.finish(true);
         return;
       }
-      if (!this.waveBreakUntil) {
-        this.waveBreakUntil = this.runTime + 4;
-        for (const shot of this.hostile) shot.s.destroy();
-        this.hostile.length = 0;
-      }
-      if (this.runTime >= this.waveBreakUntil) {
-        this.wave++;
-        encounter = this.waves[this.wave - 1];
-        this.waveSpawned = this.encounterBatch = this.spawnClock = this.waveBreakUntil = 0;
-        this.encounterHeading = this.build.random()*Math.PI*2;
-      }
+      this.wave++;
+      encounter = this.waves[this.wave - 1];
+      this.waveSpawned = this.encounterBatch = this.spawnClock = 0;
+      this.encounterHeading = this.build.random()*Math.PI*2;
     }
     const input = this.movementInput();
     const S = Math.hypot(input.x, input.y);

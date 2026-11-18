@@ -15,13 +15,15 @@ export const stages = [
   ["静默天线阵","哨兵包围","twin","wisp","surround"],
   ["黎明要塞","铁壁合围","brute","twin","surround"],
 ];
+export const waveSeconds = 24;
 export function stageWaves(index) {
   const [,theme,first,second,formation] = stages[index];
   return waves.map((wave,i) => {
     const featured = i % 3 === 0 || i === 8;
-    const total = wave.total + Math.floor(index * (1+i/10));
-    const batches = Math.ceil(total / wave.count);
-    return {...wave, total, interval: 20 / Math.max(1,batches-1),
+    const total = Math.ceil((wave.total + Math.floor(index * (1+i/10))) * 1.4);
+    const count = Math.ceil(wave.count * 1.4);
+    const batches = Math.ceil(total / count);
+    return {...wave, total, count, interval: (waveSeconds - 4) / Math.max(1,batches-1),
       ...(featured ? {name:theme, kinds:[first,second,...wave.kinds],
         crossfire:formation==="crossfire", sweep:formation==="sweep", surround:formation==="surround"} : {})};
   });
@@ -112,7 +114,7 @@ export function renderLobby(scene,tab="关卡",message="") {
     b.append(node("strong",title),node("small",detail));grid.append(b);
   };
   if(tab==="关卡") {
-    panel.append(node("p","每关十波 · 约五分钟 · 清场后整备"));
+    panel.append(node("p","每关十波 · 生存四分钟 · 每24秒一波"));
     const limit = lastUnlockedStage(p.wins);
     grid.classList.add("stage-grid");
     stages.forEach(([name,theme,enemy],i)=>{
