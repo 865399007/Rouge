@@ -140,7 +140,7 @@ const Vt = document.createElement("div");
 Vt.className = "orientation-hint";
 Vt.textContent = "按住战场任意位置拖动即可移动";
 Zt.append(Vt);
-const battleMusicGain = 0.5;
+const battleMusicGain = 0.2;
 class ee {
   constructor() {
     ((this.volume = 0.35),

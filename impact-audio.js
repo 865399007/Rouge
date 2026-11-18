@@ -38,27 +38,27 @@ export class ImpactAudio {
     const data = buffer.getChannelData(0);
     let phase = 0, bassPhase = 0, body = 0, lowNoise = 0, previousNoise = 0;
     // Filter the element-specific instrument into the midrange collision layer.
-    const bodyCutoff = 1 - Math.exp(-TAU*1650/rate);
+    const bodyCutoff = 1 - Math.exp(-TAU*980/rate);
     const bassCutoff = 1 - Math.exp(-TAU*230/rate);
     let bodyBass = 0;
     for (let i=0; i<data.length; i++) {
       const t = i/rate, u = t/length, noise = 2*Math.random()-1;
       lowNoise += .12*(noise-lowNoise);
       phase += TAU*(end+(start-end)*(1-u)**3)/rate;
-      bassPhase += TAU*(63 + 83*Math.exp(-t/.026))/rate;
-      const thud = (.83*sin(bassPhase) + .17*sin(2*bassPhase))*Math.exp(-t/.053);
+      bassPhase += TAU*(62 + 70*Math.exp(-t/.026))/rate;
+      const thud = (.83*sin(bassPhase) + .17*sin(2*bassPhase))*Math.exp(-t/.071);
 
       const material = instruments[key](t,phase,noise,lowNoise);
       body += bodyCutoff*(material-body);
       bodyBass += bassCutoff*(body-bodyBass);
-      const collision = (body-bodyBass + .36*sin(TAU*680*t))*Math.exp(-t/.036);
+      const collision = (body-bodyBass + .31*sin(TAU*390*t))*Math.exp(-t/.046);
 
-      const snap = (.42*(noise-previousNoise) + .38*sin(TAU*3400*t)
-        + .20*sin(TAU*5100*t))*Math.exp(-t/.007);
+      const snap = (.42*(noise-previousNoise) + .38*sin(TAU*1950*t)
+        + .20*sin(TAU*2750*t))*Math.exp(-t/.005);
       previousNoise = noise;
-      const attack = Math.min(1,t/.0007);
+      const attack = Math.min(1,t/.0018);
       const tail = Math.min(1,(length-t)/.008);
-      data[i] = Math.tanh(.83*thud + .83*collision + .53*snap)*attack*tail;
+      data[i] = Math.tanh(1.04*thud + .72*collision + .17*snap)*attack*tail;
     }
     this.buffers.set(key, buffer);
     return buffer;
