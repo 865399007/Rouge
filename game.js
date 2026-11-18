@@ -561,6 +561,7 @@ class ge extends Lt.Scene {
       (this.invincible = 0),
       (this.mode = "ready"),
       (this.enemies = []),
+      (this.defeatedEnemies = []),
       (this.bullets = []),
       (this.gems = []),
       (this.rate = 390),
@@ -740,6 +741,7 @@ class ge extends Lt.Scene {
     this.sync();
   }
   effect(b, Y, K = 0, Q = 0, Z = 0, p = 0, delay = 0) {
+    if (this.hitEffectOwner) (this.hitEffectOwner.hitArt ??= []).push(b);
     if (delay > 0) b.setVisible(false);
     (this.effects.length >= 220 && this.effects.shift().sprite.destroy(),
       this.effects.push({
@@ -851,7 +853,7 @@ class ge extends Lt.Scene {
     }
   }
   hit(enemy, amount, color = 0xdad0af, meta = {}) {
-    if (!enemy.s.active || amount <= 0) return 0;
+    if (!enemy.s.active || enemy.hp <= 0 || amount <= 0) return 0;
     const crit = !meta.dot && this.build.random() < this.build.critChance + (this.mount?.type.crit || 0);
     const actual = Math.min(enemy.hp, amount * (crit ? 1.5 : 1));
     enemy.hp = Math.max(0, enemy.hp - actual);
@@ -868,11 +870,15 @@ class ge extends Lt.Scene {
         this.lastAttackShake = now;
         this.cameras.main.shake(
           crit || enemy.hp <= 0 ? 75 : 55,
-          crit || enemy.hp <= 0 ? 0.0015 : 0.0009,
+          crit || enemy.hp <= 0 ? 0.0021 : 0.0013,
           false,
         );
       }
-      this.hitStop(crit || enemy.hp <= 0 ? 110 : 80);
+      this.hitStop(200);
+      const angle = Math.atan2(enemy.s.y-this.player.y, enemy.s.x-this.player.x);
+      enemy.knockback = {x:Math.cos(angle), y:Math.sin(angle), remaining:enemy.boss ? 4 : 12};
+      enemy.hitArt = (enemy.hitArt || []).filter(sprite => sprite.active);
+      this.hitEffectOwner = enemy;
       this.impact(enemy.s.x, enemy.s.y, color, crit, enemy.hp <= 0);
       if (this.level >= 6 && (crit || enemy.hp <= 0) &&
           this.runTime >= (this.nextFinisherArt ?? 0)) {
@@ -890,9 +896,37 @@ class ge extends Lt.Scene {
         }
         this.effect(shards, .32, 0, 0, .95, 1.4);
       }
+      this.hitEffectOwner = null;
       this.flashEnemy(enemy);
     }
     if (enemy.hp <= 0) {
+      // Stop all targeting immediately but keep the sprite visible through its final impact.
+      enemy.s.setActive(false);
+      this.enemies.splice(this.enemies.indexOf(enemy), 1);
+      this.defeatedEnemies.push(enemy);
+    }
+    return actual;
+  }
+  updateEnemyReaction(enemy, dt) {
+    const push = enemy.knockback;
+    if (push) {
+      const distance = Math.min(push.remaining, dt*100);
+      this.defenses.move(enemy.s, push.x*distance, push.y*distance, enemy.r);
+      push.remaining -= distance;
+      if (push.remaining <= 0) enemy.knockback = null;
+    }
+  }
+  settleDefeated(dt) {
+    for (let i=this.defeatedEnemies.length-1; i>=0; i--) {
+      const enemy=this.defeatedEnemies[i];
+      this.updateEnemyReaction(enemy,dt);
+      if (enemy.flashUntil && enemy.flashUntil <= this.combat.time) {
+        enemy.s.setTexture(enemy.normalTexture);
+        enemy.flashUntil=0;
+      }
+      if (enemy.knockback || enemy.flashUntil || enemy.hitArt?.some(sprite=>sprite.active) ||
+          this.damageNumbers.hasActive(enemy)) continue;
+      this.defeatedEnemies.splice(i,1);
       if (enemy.bounty) enemy.materials += 3;
       this.defenses.drop(enemy);
       pt.play("kill");
@@ -900,14 +934,12 @@ class ge extends Lt.Scene {
       gem.xp = enemy.xp ?? 3;
       this.gems.push(gem);
       enemy.s.destroy();
-      const index = this.enemies.indexOf(enemy);
-      if (index >= 0) this.enemies.splice(index, 1);
+
       this.kills++;
       if (enemy.boss) this.hp = Math.min(this.maxHp, this.hp + 10);
 
       this.sync();
     }
-    return actual;
   }
   shieldReturnFeedback(enemy) {
     const {x,y} = enemy.s;
@@ -1334,8 +1366,9 @@ class ge extends Lt.Scene {
           .toString()
           .padStart(2, "0")}`,
       ));
+    this.settleDefeated(K);
     let encounter = this.waves[this.wave - 1];
-    if (this.waveSpawned === encounter.total && this.enemies.length === 0) {
+    if (this.waveSpawned === encounter.total && this.enemies.length === 0 && !this.defeatedEnemies.length) {
       if (this.wave === this.waves.length) {
         this.finish(true);
         return;
@@ -1417,6 +1450,7 @@ class ge extends Lt.Scene {
     }
     this.enemyTelegraphs.clear();
     for (let t of this.enemies) {
+      this.updateEnemyReaction(t,K);
       this.defenses.confine(t.s, t.r);
       if (this.waveSpawned === encounter.total && this.enemies.length <= 3 &&
           !this.cameras.main.worldView.contains(t.s.x,t.s.y)) {

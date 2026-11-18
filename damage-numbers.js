@@ -60,6 +60,9 @@ export class DamageNumbers {
     channels[key] = item;
     this.items.push(item);
   }
+  hasActive(enemy) {
+    return Object.values(this.pending.get(enemy) || {}).some(item => item.sprite.active);
+  }
   update(dt) {
     this.items = this.items.filter((item) => {
       item.life -= dt;
