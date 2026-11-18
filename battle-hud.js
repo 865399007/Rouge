@@ -1,16 +1,17 @@
 // Shared Phaser drawing coordinates and hit regions for both runtimes.
 export function drawBattleHud({s,w,h,ids,screen,capRect,toggleNode,padNode,settingsOpen,volume,onToggle,drawUpgrade,add,box,type,images,drawIcon,drawTowerIcon=drawIcon,hit}){
     const ink=0x322e23,paper=0xf0e6cd,cream=0xf9f1dc;
+    const groundText=(x,y,value,size,width,bold=false,center=false)=>type(x,y,value,size,width,bold,center,'#eee8d7');
     const left=50,right=w-54;
     function meter(y,ratio,color){box(left,y,225,10,0x726b59,4,1);if(ratio>0)box(left+1,y+1,223*Math.min(1,ratio),8,color,3,0);}
-    type(left,12,(ids['job-name']?.textContent||'')+'   Lv.'+s.level+'                 '+s.hp.toFixed(0)+' / '+s.maxHp,16,250,true);meter(40,s.hp/s.maxHp,0xc77c60);
-    type(left,60,'战斗经验                       '+s.xp+' / '+s.need,13,250);meter(81,s.xp/s.need,0x87a99f);
-    type(w/2,10,'街区守夜 / SURVIVE',12,250,true,true);type(w/2,28,ids.timer?.textContent,38,250,true,true);type(w/2,76,ids.wave?.textContent,14,400,false,true);
+    groundText(left,12,(ids['job-name']?.textContent||'')+'   Lv.'+s.level+'                 '+s.hp.toFixed(0)+' / '+s.maxHp,16,250,true);meter(40,s.hp/s.maxHp,0xc77c60);
+    groundText(left,60,'战斗经验                       '+s.xp+' / '+s.need,13,250);meter(81,s.xp/s.need,0x87a99f);
+    groundText(w/2,10,'街区守夜 / SURVIVE',12,250,true,true);groundText(w/2,28,ids.timer?.textContent,38,250,true,true);groundText(w/2,76,ids.wave?.textContent,14,400,false,true);
     Array.from(ids.skills?.children||[]).forEach((n,i)=>drawIcon(images(n)[0] || 'buff-'+s.build.active[i]?.id,left+18+i*44,116,32));
     const cap=capRect,px=Math.min(right-132,cap?.left?cap.left*w/screen.windowWidth-48:right-132),gx=px-82,gy=44;
-    const glyph=add(s.add.graphics()).fillStyle(ink);
+    const glyph=add(s.add.graphics()).fillStyle(cream);
     glyph.fillRoundedRect(px-14,gy-16,10,32,2).fillRoundedRect(px+4,gy-16,10,32,2);
-    for(const [dy,dx] of [[-9,-6],[9,8]])glyph.lineStyle(4,ink).lineBetween(gx-20,gy+dy,gx+20,gy+dy).fillStyle(paper).fillCircle(gx+dx,gy+dy,5).strokeCircle(gx+dx,gy+dy,5);
+    for(const [dy,dx] of [[-9,-6],[9,8]])glyph.lineStyle(4,cream).lineBetween(gx-20,gy+dy,gx+20,gy+dy).fillStyle(paper).fillCircle(gx+dx,gy+dy,5).strokeCircle(gx+dx,gy+dy,5);
     const toggle=toggleNode;
     toggle.onclick=()=>{onToggle();};
     hit(toggle,gx-37,gy-37,74,74);hit(ids.pause,px-37,gy-37,74,74);
@@ -40,12 +41,12 @@ export function drawBattleHud({s,w,h,ids,screen,capRect,toggleNode,padNode,setti
       ring.fillStyle(0x31392d,.26).fillCircle(jx,jy,radius).lineStyle(3,cream,.68).strokeCircle(jx,jy,radius);
       ring.fillStyle(cream,.8).fillCircle(jx+Number(shift[0])*sx,jy+Number(shift[1])*sy,radius*.38);
     }
-    const tools=ids['tower-tools'];if(tools){const towerTop=(h-(3*74+2*8))/2;type(right-74,towerTop-26,tools.children[0]?.textContent,14,85);Array.from(tools.children).filter(n=>n.tagName==='BUTTON').forEach((n,i)=>{const y=towerTop+i*82;box(right-74,y,74,74,n.disabled?0x999999:cream,8,3,0,.25);drawTowerIcon(images(n)[0]+(n.disabled?"-disabled":""),right-37,y+27,46);type(right-37,y+52,['速射 ◆3','冰晶 ◆5','爆裂 ◆7'][i],13,72,true,true);hit(n,right-74,y,74,74);});}
+    const tools=ids['tower-tools'];if(tools){const towerTop=(h-(3*74+2*8))/2;groundText(right-74,towerTop-26,tools.children[0]?.textContent,14,85);Array.from(tools.children).filter(n=>n.tagName==='BUTTON').forEach((n,i)=>{const y=towerTop+i*82;box(right-74,y,74,74,n.disabled?0x999999:cream,8,3,0,.25);drawTowerIcon(images(n)[0]+(n.disabled?"-disabled":""),right-37,y+27,46);type(right-37,y+52,['速射 ◆3','冰晶 ◆5','爆裂 ◆7'][i],13,72,true,true);hit(n,right-74,y,74,74);});}
     const up=ids['tower-upgrade'];
     if(up&&!up.hidden&&s.defenses?.selectedTower){
       drawUpgrade(up);
     }
-    type(left,h-34,'移速  '+s.movementSpeed+'     击败  '+s.kills,18,340,true);
+    groundText(left,h-34,'移速  '+s.movementSpeed+'     击败  '+s.kills,18,340,true);
     const warn=ids['boss-warning'];if(warn&&!warn.hidden)type(w/2,106,warn.textContent,20,360,true,true);
     return slider;
 }

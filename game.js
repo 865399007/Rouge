@@ -1744,7 +1744,7 @@ const Ct = new Lt.Game({
   parent: "game",
   width: 900,
   height: 620,
-  backgroundColor: "#b9ad91",
+  backgroundColor: "#303944",
   antialias: !0,
   scene: ge,
   scale: { mode: Lt.Scale.NONE, autoCenter: Lt.Scale.CENTER_BOTH },

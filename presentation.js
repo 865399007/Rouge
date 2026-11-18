@@ -2,16 +2,16 @@ import { BALANCE, variants } from "./balance.js";
 // Original vector art and presentation layer.
 // Lobby order: ground, shade, highlight, landmark and smaller scenery.
 const terrain = [
-  [0xb9ad91,0xa49a81,0xcfc4a9,"kiosk","planter"],
-  [0xa3b8b4,0x879e9f,0xc4d1c7,"bridge","reeds"],
-  [0xb6a493,0x998878,0xcbbaa4,"wagon","rails"],
-  [0xa7b796,0x8da180,0xc4cfae,"glasshouse","shrooms"],
-  [0xada09b,0x938783,0xc7b6a9,"mine","crystal"],
-  [0xa9a0af,0x918998,0xc7b4bf,"neon","tyres"],
-  [0xa7b5ac,0x889e98,0xc5c6ac,"crane","buoy"],
-  [0xa5afb3,0x909ca3,0xc4c7be,"turbine","barrier"],
-  [0xabb5a8,0x909e92,0xc7cbb6,"dish","cabinet"],
-  [0xc6b198,0xab957e,0xdcc7a6,"keep","brazier"],
+  [0x35414b,0x222d36,0x475660,"kiosk","planter"],
+  [0x30434a,0x202f37,0x445e65,"bridge","reeds"],
+  [0x413d40,0x292c33,0x554c4d,"wagon","rails"],
+  [0x34463f,0x22352f,0x4a594c,"glasshouse","shrooms"],
+  [0x3b3946,0x282731,0x514759,"mine","crystal"],
+  [0x383749,0x242637,0x4b475e,"neon","tyres"],
+  [0x304448,0x213237,0x435657,"crane","buoy"],
+  [0x36404c,0x232c39,0x4a5664,"turbine","barrier"],
+  [0x35423e,0x232d30,0x4b5752,"dish","cabinet"],
+  [0x44404a,0x2e2d38,0x59515a,"keep","brazier"],
 ];
 // Secondary silhouettes vary with the habitat, including rare built landmarks.
 const habitats = [
@@ -311,42 +311,57 @@ export function drawGround(scene, x, y, random, solids) {
   view.add(g);
   const [ground,shade,light,landmark,prop] = terrain[scene.profile.stage] || terrain[0];
   g.fillStyle(ground).fillRect(0, 0, 600, 600);
-  // Low-contrast patches are visual decoration, never invisible obstacles.
-  for (let i = 0; i < 9; i++) {
-    g.fillStyle(i % 2 ? shade : light, 0.55).fillEllipse(
-      random() * 600,
-      random() * 600,
-      70 + random() * 140,
-      25 + random() * 65,
-    );
+  const stage = scene.profile.stage;
+  // Broken paving, silt and rubble are ground paint with no collision footprint.
+  const surface = ["street","wet","rail","moss","shale","street","wet","street","cable","shale"][stage];
+  for (let i=0;i<7;i++) {
+    const cx=80+random()*440, cy=45+random()*510;
+    const radius=28+random()*47, points=[];
+    for(let j=0;j<11;j++){
+      const angle=j*Math.PI*2/11, r=radius*(.65+random()*.35);
+      points.push({x:cx+Math.cos(angle)*r,y:cy+Math.sin(angle)*r*.42});
+    }
+    g.fillStyle(shade,.74).fillPoints(points,true);
+    if(surface==="wet"){
+      g.lineStyle(2,0x79989f,.42).lineBetween(cx-radius*.45,cy+2,cx+radius*.2,cy)
+        .lineBetween(cx+5,cy+6,cx+24,cy+5);
+    }
+    if(surface==="moss"){
+      for(let j=0;j<9;j++)g.fillStyle(0x738160,.4).fillEllipse(cx+(random()-.5)*radius,cy+(random()-.5)*18,8,4);
+    }
   }
-  for (let i = 0; i < 100; i++) {
-    const px = random() * 600,
-      py = random() * 600;
-    g.fillStyle(0x807660, 0.23).fillCircle(px, py, 1 + random() * 1.7);
+  for(let i=0;i<4;i++){
+    let px=130+random()*340,py=110+random()*380;
+    const direction=(random()-.5)*Math.PI*2;
+    for(let j=0;j<5;j++){
+      const angle=direction+(random()-.5)*1.4, length=12+random()*15;
+      const nx=px+Math.cos(angle)*length,ny=py+Math.sin(angle)*length;
+      g.lineStyle(4-j*.55,0x151c24,.9).lineBetween(px,py,nx,ny);
+      g.lineStyle(1,light,.8).lineBetween(px+1,py+2,nx+1,ny+2);
+      if(j===2)g.lineStyle(2,0x18212a,.9).lineBetween(nx,ny,nx-Math.sin(angle)*18,ny+Math.cos(angle)*18);
+      px=nx;py=ny;
+    }
+    for(let j=0;j<8;j++){
+      const dx=px+(random()-.5)*65,dy=py+(random()-.5)*32,r=2+random()*6;
+      g.fillStyle(j%3?light:0x786761,.78).fillTriangle(dx-r,dy,dx+1,dy-r*.65,dx+r,dy+2);
+    }
   }
-  for (let i = 0; i < 11; i++) {
-    const px = 25 + random() * 550,
-      py = 25 + random() * 550;
-    g.lineStyle(2, 0x887e64, 0.55)
-      .lineBetween(px, py, px + 8, py - 5)
-      .lineBetween(px + 8, py - 5, px + 18, py - 3);
+  const ax=85+random()*400,ay=90+random()*415;
+  if(surface==="street"){
+    for(let i=0;i<3;i++){
+      const x=ax+i*16,y=ay-i*3;
+      g.fillStyle(stage===5?0x997d94:0x999078,.47).fillTriangle(x,y,x+12,y-3,x+2,y+4);
+    }
+  } else if(surface==="rail" || surface==="cable"){
+    for(let i=0;i<2;i++)g.lineStyle(2,i?light:0x1a2227,.9)
+      .lineBetween(ax,ay+i*5,ax+30,ay+9+i*5).lineBetween(ax+30,ay+9+i*5,ax+64,ay-5+i*5);
+  } else if(surface==="shale"){
+    for(let i=0;i<6;i++){
+      const x=ax+random()*45,y=ay+random()*17;
+      g.fillStyle(light,.9).fillTriangle(x,y,x+18,y-6,x+13,y+1);
+    }
   }
-  for (let i = 0; i < 5; i++) {
-    const px = 30 + random() * 540,
-      py = 30 + random() * 540;
-    g.lineStyle(2, 0x7e8060, 0.65)
-      .lineBetween(px, py, px - 5, py - 10)
-      .lineBetween(px, py, px + 3, py - 14)
-      .lineBetween(px, py, px + 9, py - 8);
-  }
-  for (let i = 0; i < 3; i++)
-    view.add(
-      scene.add
-        .image(30 + random() * 540, 30 + random() * 540, "rock")
-        .setScale(0.5 + random() * 0.4)
-        .setAlpha(0.6),
-    );
+  for(let i=0;i<65;i++)g.fillStyle(light,.45).fillCircle(random()*600,random()*600,1+random()*1.4);
   const palette = habitats[scene.profile.stage] || habitats[0];
   const upright = [];
   const placed = [];

@@ -43,7 +43,7 @@ export class Defenses {
         this.width - 8,
         this.height - 8,
       )
-      .setStrokeStyle(8, 0xe4ce8f)
+      .setStrokeStyle(5, 0x64747c)
       .setDepth(0);
     this.stock = BALANCE.initialMaterials;
     this.towers = [];
