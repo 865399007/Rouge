@@ -162,6 +162,7 @@ export function updateBuffIcons(scene) {
       key: "buff-" + type.passiveIcon, level: type.shield ? Math.ceil(shield) : 0, color: 0x745634,
     });
   }
+  if (scene.roll?.remaining > 0) effects.unshift({ key: "buff-haste", color: 0x287467 });
   if (scene.invincible > 0) effects.push({ key: "buff-invincible", color: 0x3d6374 });
   const row = scene.buffIcons;
   const signature = effects.map(e => e.key + (e.level || "")).join("|");

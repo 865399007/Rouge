@@ -545,6 +545,7 @@ class ge extends Lt.Scene {
       (this.combat = new ce(this, (name) => pt.play(name))),
       (this.runTime = 0),
       (this.mount = null),
+      (this.sprintLines = this.add.graphics()),
       (this.buffIcons = this.add.container().setDepth(11)),
       (this.accumulator = 0),
       (this.waveSpawned = 0),
@@ -1432,6 +1433,7 @@ class ge extends Lt.Scene {
     }
     const input = this.movementInput();
     const S = Math.hypot(input.x, input.y);
+    const previousX = this.player.x, previousY = this.player.y;
     const movementTime = this.roll.step(K);
     {
       if (S)
@@ -1752,6 +1754,19 @@ class ge extends Lt.Scene {
     }
     for(const enemy of this.enemies){
       enemy.s.setDepth(sceneryDepth(enemy.s.y+enemy.s.displayHeight*.38));
+    }
+    const lines = this.sprintLines.clear();
+    const dx = this.player.x - previousX, dy = this.player.y - previousY;
+    if (this.roll.remaining > 0 && Math.hypot(dx, dy) > 0.01) {
+      lines.setPosition(this.player.x, this.player.y).setRotation(Math.atan2(dy, dx))
+        .setDepth(playerDepth - .0001);
+      for (let i = 0; i < 3; i++) {
+        const pulse = (this.roll.remaining * 4 + i / 3) % 1;
+        const start = -this.player.displayWidth * .32 - 12 * pulse;
+        const y = (i - 1) * 7;
+        lines.lineStyle(2, 0xc8fff1, .8 - .35 * pulse)
+          .lineBetween(start, y, start - 12 - 10 * pulse, y);
+      }
     }
     updatePresentation(this, S > 0);
     drawStatusEffects(this);
