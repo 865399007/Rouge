@@ -901,6 +901,8 @@ class ge extends Lt.Scene {
     }
     if (enemy.hp <= 0) {
       // Stop all targeting immediately but keep the sprite visible through its final impact.
+      enemy.fadeElapsed = 0;
+      enemy.fadeStartAlpha = enemy.s.alpha;
       enemy.s.setActive(false);
       this.enemies.splice(this.enemies.indexOf(enemy), 1);
       this.defeatedEnemies.push(enemy);
@@ -919,12 +921,14 @@ class ge extends Lt.Scene {
   settleDefeated(dt) {
     for (let i=this.defeatedEnemies.length-1; i>=0; i--) {
       const enemy=this.defeatedEnemies[i];
+      enemy.fadeElapsed = Math.min(1, enemy.fadeElapsed + dt);
+      enemy.s.setAlpha(enemy.fadeStartAlpha * (1 - enemy.fadeElapsed));
       this.updateEnemyReaction(enemy,dt);
       if (enemy.flashUntil && enemy.flashUntil <= this.combat.time) {
         enemy.s.setTexture(enemy.normalTexture);
         enemy.flashUntil=0;
       }
-      if (enemy.knockback || enemy.flashUntil || enemy.hitArt?.some(sprite=>sprite.active) ||
+      if (enemy.fadeElapsed < 1 || enemy.knockback || enemy.flashUntil || enemy.hitArt?.some(sprite=>sprite.active) ||
           this.damageNumbers.hasActive(enemy)) continue;
       this.defeatedEnemies.splice(i,1);
       if (enemy.bounty) enemy.materials += 3;
