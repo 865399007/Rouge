@@ -135,19 +135,23 @@ function trailStamp(scene, id, x, y, angle, side) {
         .fillTriangle(3,side*7,7,side*11,0,side*12);
       break;
   }
-  scene.effect(art, id === "lynx" ? 0.32 : 0.56, 0, 0, id === "boar" ? 0.5 : 0);
+  scene.effect(art, id === "lynx" ? 0.52 : 0.85, 0, 0, id === "boar" ? 0.5 : 0);
 }
 
 function updateMountTrail(scene, mount) {
   const trail = mount.trail, p = scene.player;
   const dx = p.x - trail.x, dy = p.y - trail.y, distance = Math.hypot(dx, dy);
   if (!distance) return;
+  // Sample the ground contact line beneath the body, independent of travel direction.
+  const ground = animalGaits[mount.type.id]?.ground ??
+    (mount.type.id === "walker" ? walkerLegs[2].ground : mount.sprite.displayHeight * .4);
+  const footOffset = 20 + ground;
   const spacing = 19;
   if (distance < 120) {
     const angle = Math.atan2(dy, dx);
     for (let step = spacing - trail.carry; step <= distance; step += spacing) {
-      const fraction = (step - 15) / distance;
-      trailStamp(scene, mount.type.id, trail.x + dx*fraction, trail.y + dy*fraction + 29, angle, trail.side);
+      const fraction = step / distance;
+      trailStamp(scene, mount.type.id, trail.x + dx*fraction, trail.y + dy*fraction + footOffset, angle, trail.side);
       trail.side *= -1;
     }
     trail.carry = (trail.carry + distance) % spacing;
