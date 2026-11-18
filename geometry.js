@@ -39,7 +39,7 @@ export function moveCircle(actor, dx, dy, radius, towers, width, height) {
       confine();
       let touched = false;
       for (const tower of towers) {
-        const gap = TOWER_RADIUS + radius;
+        const gap = (tower.radius ?? TOWER_RADIUS) + radius;
         let nx = actor.x - tower.x,
           ny = actor.y - tower.y;
         const distance = Math.hypot(nx, ny);

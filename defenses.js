@@ -91,7 +91,7 @@ export class Defenses {
     this.refreshBuildButtons();
   }
   siteOccupied() {
-    return this.towers.some(t => this.overlaps(t, this.scene.player, halfTower));
+    return this.towers.some(t => this.overlaps(t, this.scene.player, halfTower)) || !this.clearScenery(this.scene.player, halfTower);
   }
   refreshBuildButtons() {
     const blocked = this.scene.mode !== "play" || this.siteOccupied();
@@ -104,7 +104,7 @@ export class Defenses {
     if (this.scene.mode !== "play" || this.stock < type.cost) return;
     const p = this.scene.player;
     if (this.siteOccupied()) {
-      this.counter.textContent = `此处已有防御塔 · ◆ ${this.stock}`;
+      this.counter.textContent = `此处无法建造 · ◆ ${this.stock}`;
       return;
     }
     this.exitTower = this.build(type, p);
@@ -112,12 +112,18 @@ export class Defenses {
   overlaps(tower, actor, radius) {
     return circlesOverlap(tower, halfTower, actor, radius);
   }
+  clearScenery(point, radius) {
+    return !(this.scene.world?.solids || []).some(s => circlesOverlap(s,s.radius,point,radius));
+  }
   move(actor, dx, dy, radius) {
     let obstacles = this.towers;
     if (actor === this.scene.player && this.exitTower) {
       obstacles = obstacles.filter(t => t !== this.exitTower);
     }
-    moveCircle(actor, dx, dy, radius, obstacles, this.width, this.height);
+    const reach = radius + Math.abs(dx) + Math.abs(dy) + 2;
+    const nearby = (this.scene.world?.solids || []).filter(s =>
+      Math.abs(s.x-actor.x) <= s.radius+reach && Math.abs(s.y-actor.y) <= s.radius+reach);
+    moveCircle(actor, dx, dy, radius, nearby.length ? obstacles.concat(nearby) : obstacles, this.width, this.height);
     if (actor === this.scene.player && this.exitTower && !this.overlaps(this.exitTower, actor, radius)) {
       this.exitTower = null;
     }
@@ -136,7 +142,7 @@ export class Defenses {
       y: clamp(reflect(player.y, dy, this.height), margin, this.height - margin),
     };
     const clear = (p) =>
-      this.towers.every((tower) => !this.overlaps(tower, p, radius));
+      this.towers.every((tower) => !this.overlaps(tower, p, radius)) && this.clearScenery(p,radius);
     if (clear(point)) return point;
     let closest = null,
       distance = Infinity;

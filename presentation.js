@@ -305,7 +305,7 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
   list.querySelector("button")?.focus({ preventScroll: true });
 }
 
-export function drawGround(scene, x, y, random) {
+export function drawGround(scene, x, y, random, solids) {
   const view = scene.add.container(x * 600, y * 600).setDepth(-10);
   const g = scene.add.graphics();
   view.add(g);
@@ -364,6 +364,8 @@ export function drawGround(scene, x, y, random) {
       clear=placed.every(point=>Math.hypot(px-point.x,py-point.y)>78*scale);
     }
     if (!clear) continue;
+    // Leave the initial deployment point clear for every stage and screen size.
+    if (Math.hypot(x*600+px-scene.defenses.width/2,y*600+py-scene.defenses.height/2)<145) continue;
     placed.push({x:px,y:py});
     const sprite=scene.add.image(x*600+px,y*600+py,"scenery-"+key)
       .setOrigin(.5,.88).setScale(scale).setFlipX(random()<.5);
@@ -373,6 +375,10 @@ export function drawGround(scene, x, y, random) {
     } else {
       sprite.setDepth(sceneryDepth(sprite.y));
       upright.push(sprite);
+      // The solid footprint is narrower than the illustrated roof or canopy.
+      const narrow = ["oak","pine","willow","mast","lamps","banner","turbine","fungus-tree","reeds","fern"].includes(key);
+      solids.push({x:sprite.x,y:sprite.y-sprite.displayHeight*.09,
+        radius:sprite.displayWidth*(narrow ? .105 : .255),sprite});
     }
   }
   view.once("destroy",()=>{for(const sprite of upright) if(sprite.active)sprite.destroy();});

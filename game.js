@@ -394,13 +394,14 @@ class ne {
   constructor(scene) {
     this.scene = scene;
     this.stage = scene.profile.stage;
+    this.solids = [];
     this.chunks = new Map();
     for (let y = 0; y * Gt < scene.defenses.height; y++)
       for (let x = 0; x * Gt < scene.defenses.width; x++)
         this.chunks.set(x + "," + y, { view: this.draw(x, y) });
   }
   draw(b, Y) {
-    return drawGround(this.scene, b, Y, se(b, Y));
+    return drawGround(this.scene, b, Y, se(b, Y), this.solids);
   }
   destroy() {
     for (const b of this.chunks.values()) b.view.destroy(!0);
@@ -1637,7 +1638,16 @@ class ge extends Lt.Scene {
         }
       }
     // Feet determine which side of trunks and facades each actor occupies.
-    const playerDepth = sceneryDepth(this.player.y + this.player.displayHeight*.38);
+    const feet = this.player.y + this.player.displayHeight*.38;
+    const playerDepth = sceneryDepth(feet);
+    for (const {sprite} of this.world.solids) {
+      const overlaps = feet < sprite.y &&
+        Math.abs(this.player.x-sprite.x) < sprite.displayWidth*.41 + this.player.displayWidth*.25 &&
+        feet > sprite.y - sprite.displayHeight*.85;
+      const target = overlaps ? .37 : 1;
+      const next = sprite.alpha + Math.sign(target-sprite.alpha)*Math.min(Math.abs(target-sprite.alpha), K*5);
+      if (next !== sprite.alpha) sprite.setAlpha(next);
+    }
     this.player.setDepth(playerDepth);
     this.gun.setDepth(playerDepth+.00001);
     if(this.mount){
