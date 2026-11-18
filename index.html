@@ -1,28 +1,90 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><link rel="manifest" href="./manifest.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="末日小队"><meta name="theme-color" content="#17272a"><title>末日小队 · 街区守夜</title>  <script type="module" crossorigin src="./index-a3lyyDCc.js"></script>
-  <link rel="stylesheet" crossorigin href="./index-D37iuaXM.css">
-</head>
-<body>
-<main class="game-frame" aria-label="末日小队游戏">
-  <div id="game">
-    <div class="hud" aria-label="战斗状态">
-      <section class="vitals hud-panel">
-        <div class="health-label"><span>生命值 <strong>Lv.<b id="level">1</b></strong></span><b id="health">100 / 100</b></div>
-        <div class="bar"><i id="hp"></i></div>
-        <div class="health-label"><span>战斗经验</span><b id="xp-label">0 / 18</b></div>
-        <div class="bar xp"><i id="xp"></i></div>
-      </section>
-      <span id="wave" class="wave">生存 0 / 10 分钟</span>
-      <div class="game-top">
-        <details class="settings"><summary aria-label="游戏设置">⚙</summary><div class="settings-panel hud-panel"><button id="sound" aria-label="切换静音" aria-pressed="false">声音：开</button><label for="volume">音量</label><input id="volume" type="range" min="0" max="100" value="35" aria-label="游戏音量"><button id="restart">↻ 重新开始</button></div></details>
-        <button id="pause">Ⅱ 暂停</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="末日小队" />
+    <meta name="theme-color" content="#302e26" />
+    <title>末日小队 · 街区守夜</title>
+    <link rel="icon" type="image/svg+xml" href="./assets/potato.svg" />
+    <script type="module" src="./game.js"></script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="game-frame" aria-label="末日小队游戏">
+      <div id="game" tabindex="-1">
+        <div class="hud" aria-label="战斗状态">
+          <section class="vitals hud-panel">
+            <div class="survivor-avatar">
+              <img src="./assets/potato.svg" alt="守夜人" />
+            </div>
+            <div class="vitals-bars">
+              <div class="health-label">
+                <span
+                  >守夜人 <strong>LV.<b id="level">1</b></strong></span
+                ><b id="health">100 / 100</b>
+              </div>
+              <div class="bar"><i id="hp"></i></div>
+              <div class="health-label xp-label">
+                <span>进化经验</span><b id="xp-label">0 / 18</b>
+              </div>
+              <div class="bar xp"><i id="xp"></i></div>
+            </div>
+          </section>
+          <div class="mission-clock">
+            <span class="eyebrow">街区守夜 / SURVIVE</span
+            ><strong id="timer">00:00</strong
+            ><span id="wave" class="wave">生存 0 / 10 分钟</span>
+          </div>
+          <div class="game-top">
+            <details class="settings">
+              <summary aria-label="游戏设置">⚙</summary>
+              <div class="settings-panel hud-panel">
+                <button id="sound" aria-label="切换静音" aria-pressed="false">
+                  声音：开</button
+                ><label for="volume">音量</label
+                ><input
+                  id="volume"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="35"
+                  aria-label="游戏音量"
+                /><button id="restart">↻ 重新开始</button>
+              </div>
+            </details>
+            <button id="pause">Ⅱ 暂停</button>
+          </div>
+          <div id="boss-hud" hidden>
+            <strong>街区暴君</strong><span></span>
+            <div class="bar"><i></i></div>
+          </div>
+          <aside id="tower-tools" aria-label="拖动建造防御塔"></aside>
+          <section
+            id="skills"
+            class="equipment hud-panel"
+            aria-label="已装备技能"
+          ></section>
+          <section class="stats hud-panel">
+            <span>攻击 <b id="damage">18</b></span
+            ><span>移速 <b id="speed">210</b></span
+            ><span>击败 <b id="kills">0</b></span>
+          </section>
+          <div class="controls-hint">
+            <kbd>W A S D</kbd> 移动 <span>·</span> 自动攻击 <span>·</span>
+            <kbd>SPACE</kbd> 暂停
+          </div>
+        </div>
       </div>
-      <aside id="tower-tools" aria-label="拖动建造防御塔"></aside>
-      <section id="skills" class="equipment hud-panel" aria-label="已装备技能"></section>
-      <section class="stats hud-panel"><span>⚔ 攻击 <b id="damage">18</b></span><span>➶ 移速 <b id="speed">210</b></span><span>✦ 击败 <b id="kills">0</b></span></section>
-    </div>
-  </div>
-</main>
-</body></html>
-
+    </main>
+  </body>
+</html>
