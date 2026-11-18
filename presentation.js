@@ -1,6 +1,7 @@
 import { BALANCE, variants } from "./balance.js";
 // Original vector art and presentation layer.
 export const artKeys = [
+  "mount-boar-body", "mount-lynx-body", "mount-stag-body",
   "mount-walker-chassis", "mount-walker", "mount-stag", "mount-drake", "mount-lynx", "mount-boar",
   "hero-ranger",
   "hero-vanguard",

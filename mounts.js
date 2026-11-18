@@ -9,10 +9,10 @@ export const mounts = [
 // Local coordinates relative to the chassis centre. Far and near feet land
 // on separate tracks, with diagonally opposite legs sharing a swing phase.
 const walkerLegs = [
-  { hipX: -26, hipY: 3, footX: -48, ground: 27, bend: -1, phase: 0, far: true },
-  { hipX: 17, hipY: 2, footX: 43, ground: 25, bend: 1, phase: Math.PI, far: true },
-  { hipX: -18, hipY: 9, footX: -32, ground: 36, bend: -1, phase: Math.PI, far: false },
-  { hipX: 10, hipY: 8, footX: 29, ground: 35, bend: 1, phase: 0, far: false },
+  { hipX: -31, hipY: 1, footX: -53, ground: 36, bend: -1, phase: 0, far: true },
+  { hipX: 20, hipY: 1, footX: 48, ground: 35, bend: 1, phase: Math.PI, far: true },
+  { hipX: -22, hipY: 11, footX: -32, ground: 42, bend: -1, phase: Math.PI, far: false },
+  { hipX: 13, hipY: 11, footX: 30, ground: 42, bend: 1, phase: 0, far: false },
 ];
 
 function animateWalker(mount, player, dt) {
@@ -21,33 +21,85 @@ function animateWalker(mount, player, dt) {
   const distance = Math.hypot(dx, dy);
   gait.lastX = player.x;
   gait.lastY = player.y;
-  gait.phase += distance / 11;
+  gait.phase += Math.min(distance / 18, dt * 18);
   const moving = distance > 0.01;
   const blend = Math.min(1, dt * 16);
   gait.stride += ((moving ? 1 : 0) - gait.stride) * blend;
   if (Math.abs(dx) > 0.01) mount.sprite.setFlipX(dx < 0);
-  const bob = Math.cos(2 * gait.phase) * gait.stride * 1.6;
+  const bob = Math.cos(2 * gait.phase) * gait.stride * 3;
   mount.sprite.setPosition(player.x, player.y + 20 + bob);
-  const g = gait.art.clear().setPosition(player.x, player.y + 20)
-    .setScale(mount.sprite.flipX ? -1 : 1, 1);
+  for (const layer of gait.layers) {
+    layer.clear().setPosition(player.x, player.y + 20).setScale(mount.sprite.flipX ? -1 : 1, 1);
+  }
   for (const leg of walkerLegs) {
+    const g = gait.layers[leg.far ? 0 : 1];
     const phase = gait.phase + leg.phase;
-    const footX = leg.footX - 10 * Math.cos(phase) * gait.stride;
-    const footY = leg.ground - 10 * Math.max(0, Math.sin(phase)) * gait.stride;
+    const swing = Math.max(0, Math.sin(phase));
+    const footX = leg.footX - 19 * Math.cos(phase) * gait.stride;
+    const footY = leg.ground - 23 * swing * gait.stride;
     const hipY = leg.hipY + bob;
     const x = footX - leg.hipX, y = footY - hipY;
     const length = Math.hypot(x, y);
     // Two equal-length links meet at the knee, so lifting a foot folds the joint.
-    const offset = leg.bend * Math.sqrt(Math.max(0, 25 ** 2 - length ** 2 / 4)) / length;
+    const offset = leg.bend * Math.sqrt(Math.max(0, 34 ** 2 - length ** 2 / 4)) / length;
     const kneeX = leg.hipX + x / 2 + y * offset;
     const kneeY = hipY + y / 2 - x * offset;
-    const links = [{ x:leg.hipX, y:hipY }, { x:kneeX, y:kneeY }, { x:footX, y:footY }];
-    g.lineStyle(8, 0x303a3c).strokePoints(links)
-      .lineStyle(4, leg.far ? 0x556c6e : 0x91ada6).strokePoints(links)
-      .fillStyle(0x303a3c).fillCircle(kneeX, kneeY, 5)
-      .fillStyle(leg.far ? 0xb48c50 : 0xffc968).fillCircle(kneeX, kneeY, 3)
-      .lineStyle(5, 0x344447).lineBetween(footX-3, footY, footX+7, footY);
+    // Separate armoured thigh and bright piston make the hinge readable in profile.
+    g.lineStyle(10, 0x293a3d).lineBetween(leg.hipX, hipY, kneeX, kneeY)
+      .lineStyle(6, leg.far ? 0x567175 : 0x8db8ad).lineBetween(leg.hipX, hipY, kneeX, kneeY)
+      .lineStyle(6, 0x293a3d).lineBetween(kneeX, kneeY, footX, footY)
+      .lineStyle(3, leg.far ? 0x849699 : 0xd7e1ce).lineBetween(kneeX, kneeY, footX, footY)
+      .fillStyle(0x293a3d).fillCircle(kneeX, kneeY, 5.5)
+      .fillStyle(leg.far ? 0xa78453 : 0xffca65).fillCircle(kneeX, kneeY, 3.5)
+      .lineStyle(5, 0x344447).lineBetween(footX-4, footY, footX+8, footY-swing*gait.stride*4);
+
   }
+}
+
+const animalGaits = {
+  boar: { hips: [-32, 13], hipY: 11, ground: 38, reach: 12, lift: 12, period: 13, bob: 2.5,
+    thigh: 10, shin: 6, near: 0xac6a48, far: 0x724735, offsets: [0, 0.5, 0.5, 0] },
+  lynx: { hips: [-24, 12], hipY: 5, ground: 33, reach: 22, lift: 17, period: 19, bob: 4,
+    thigh: 7, shin: 4, near: 0x966dac, far: 0x574565, offsets: [0, 0.54, 0.12, 0.68] },
+  stag: { hips: [-24, 9], hipY: 4, ground: 43, reach: 17, lift: 24, period: 18, bob: 3,
+    thigh: 6, shin: 3, near: 0xbadad4, far: 0x73949e, offsets: [0, 0.5, 0.54, 0.04] },
+};
+
+function animateAnimal(mount, player, dt) {
+  const gait = mount.gait, profile = animalGaits[mount.type.id];
+  const dx = player.x - gait.lastX, dy = player.y - gait.lastY;
+  const distance = Math.hypot(dx, dy);
+  gait.lastX = player.x;
+  gait.lastY = player.y;
+  gait.phase += Math.min(distance / profile.period, dt * 19);
+  gait.stride += ((distance > 0.01 ? 1 : 0) - gait.stride) * Math.min(1, dt * 14);
+  if (Math.abs(dx) > 0.01) mount.sprite.setFlipX(dx < 0);
+  const bob = Math.cos(gait.phase * 2) * profile.bob * gait.stride;
+  mount.sprite.setPosition(player.x, player.y + 20 + bob);
+  gait.layers.forEach(layer => layer.clear().setPosition(player.x, player.y + 20)
+    .setScale(mount.sprite.flipX ? -1 : 1, 1));
+  profile.offsets.forEach((offset, i) => {
+    const near = i >= 2, fore = i % 2 === 1;
+    const g = gait.layers[near ? 1 : 0];
+    const phase = gait.phase + offset * Math.PI * 2;
+    const swing = Math.max(0, Math.sin(phase)) * gait.stride;
+    const hipX = profile.hips[i % 2] + (near ? -2 : 4);
+    const hipY = profile.hipY + bob;
+    const footX = hipX + (fore ? 6 : -8) - profile.reach * gait.stride * Math.cos(phase);
+    const footY = profile.ground - (near ? 0 : 6) - profile.lift * swing;
+    const x = footX - hipX, y = footY - hipY, length = Math.hypot(x, y);
+    const link = (profile.ground - profile.hipY) * 0.67;
+    const bend = (fore ? -1 : 1) * Math.sqrt(Math.max(0, link*link - length*length/4)) / length;
+    const kneeX = hipX + x/2 + y*bend, kneeY = hipY + y/2 - x*bend;
+    const coat = near ? profile.near : profile.far;
+    g.lineStyle(profile.thigh+2, 0x3b3437).lineBetween(hipX,hipY,kneeX,kneeY)
+      .lineStyle(profile.thigh,coat).lineBetween(hipX,hipY,kneeX,kneeY)
+      .lineStyle(profile.shin+2,0x3b3437).lineBetween(kneeX,kneeY,footX,footY)
+      .lineStyle(profile.shin,coat).lineBetween(kneeX,kneeY,footX,footY)
+      .fillStyle(coat).fillCircle(kneeX,kneeY,profile.shin/2);
+    if (mount.type.id === "lynx") g.fillStyle(0x403449).fillEllipse(footX+2,footY,10,5);
+    else g.fillStyle(0x403b38).fillTriangle(footX-3,footY-4,footX+5,footY+1,footX-3,footY+1);
+  });
 }
 
 function trailStamp(scene, id, x, y, angle, side) {
@@ -111,17 +163,21 @@ export function ride(scene, type) {
   scene.mount?.label.destroy();
   const { x, y } = scene.player;
   const walker = type.id === "walker";
-  const sprite = scene.add.image(x, y + 20, walker ? "mount-walker-chassis" : "mount-" + type.id).setDepth(4.9);
+  const animal = animalGaits[type.id];
+  const texture = walker ? "mount-walker-chassis" : "mount-" + type.id + (animal ? "-body" : "");
+  const sprite = scene.add.image(x, y + 20, texture).setDepth(4.9);
   const label = scene.add.text(x, y + 47, type.name + " · " + type.passiveName + " · 60秒", {
     fontSize: "12px", color: "#fff2cf", stroke: "#342d26", strokeThickness: 3,
   }).setOrigin(0.5, 0).setDepth(9);
   scene.mount = { type, sprite, label, shield: type.shield || 0, remaining: 60, cooldown: 0 };
   scene.mount.trail = { x, y, carry: 0, side: 1 };
-  if (walker) {
-    const art = scene.add.graphics().setDepth(4.8);
-    scene.mount.gait = { art, phase: 0, stride: 0, lastX: x, lastY: y };
-    sprite.once("destroy", () => { if (art.active) art.destroy(); });
-    animateWalker(scene.mount, scene.player, 0);
+  if (walker || animal) {
+    const layers = [4.8, 4.95].map(depth => scene.add.graphics().setDepth(depth));
+    scene.mount.gait = { animate: walker ? animateWalker : animateAnimal, layers, phase: 0, stride: 0, lastX: x, lastY: y };
+    sprite.once("destroy", () => {
+      for (const layer of layers) if (layer.active) layer.destroy();
+    });
+    scene.mount.gait.animate(scene.mount, scene.player, 0);
   }
   scene.sync();
 }
@@ -141,12 +197,12 @@ export function updateMount(scene, dt) {
   const p = scene.player;
   updateMountTrail(scene, mount);
   const input = scene.movementInput();
-  if (mount.gait) animateWalker(mount, p, dt);
+  if (mount.gait) mount.gait.animate(mount, p, dt);
   else {
     if (input.x) sprite.setFlipX(input.x < 0);
     sprite.setPosition(p.x, p.y + 20 + (input.x || input.y ? Math.sin(scene.runTime * 18) * 2 : 0));
   }
-  label.setPosition(p.x, p.y + 47).setText(type.name + (type.shield && !mount.shield ? "" : " · " + type.passiveName) + " · " + Math.ceil(mount.remaining) + "秒");
+  label.setPosition(p.x, p.y + (mount.gait ? 67 : 47)).setText(type.name + (type.shield && !mount.shield ? "" : " · " + type.passiveName) + " · " + Math.ceil(mount.remaining) + "秒");
   mount.cooldown -= dt;
   if (mount.cooldown > 0) return;
   const enemies = scene.enemies.filter(e => e.s.active);
