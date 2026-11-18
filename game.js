@@ -393,6 +393,7 @@ function se(st, b) {
 class ne {
   constructor(scene) {
     this.scene = scene;
+    this.stage = scene.profile.stage;
     this.chunks = new Map();
     for (let y = 0; y * Gt < scene.defenses.height; y++)
       for (let x = 0; x * Gt < scene.defenses.width; x++)
@@ -718,6 +719,10 @@ class ge extends Lt.Scene {
   selectClass(id) {
     const job = classById(id);
     if (!job || this.mode !== "ready") return;
+    if (this.world.stage !== this.profile.stage) {
+      this.world.destroy();
+      this.world = new ne(this);
+    }
     this.job = job;
     this.build.profile = this.profile;
     this.maxHp = this.hp = job.hp + 8*(this.profile.stats.hp || 0);

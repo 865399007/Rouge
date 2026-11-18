@@ -1,6 +1,20 @@
 import { BALANCE, variants } from "./balance.js";
 // Original vector art and presentation layer.
+// Lobby order: ground, shade, highlight, landmark and smaller scenery.
+const terrain = [
+  [0xb9ad91,0xa49a81,0xcfc4a9,"kiosk","planter"],
+  [0xa3b8b4,0x879e9f,0xc4d1c7,"bridge","reeds"],
+  [0xb6a493,0x998878,0xcbbaa4,"wagon","rails"],
+  [0xa7b796,0x8da180,0xc4cfae,"glasshouse","shrooms"],
+  [0xada09b,0x938783,0xc7b6a9,"mine","crystal"],
+  [0xa9a0af,0x918998,0xc7b4bf,"neon","tyres"],
+  [0xa7b5ac,0x889e98,0xc5c6ac,"crane","buoy"],
+  [0xa5afb3,0x909ca3,0xc4c7be,"turbine","barrier"],
+  [0xabb5a8,0x909e92,0xc7cbb6,"dish","cabinet"],
+  [0xc6b198,0xab957e,0xdcc7a6,"keep","brazier"],
+];
 export const artKeys = [
+  ...terrain.flatMap(row => row.slice(3).map(name => "scenery-"+name)),
   "mount-boar-body", "mount-lynx-body", "mount-stag-body",
   "mount-walker-chassis", "mount-walker", "mount-stag", "mount-drake", "mount-lynx", "mount-boar",
   "hero-ranger",
@@ -285,10 +299,11 @@ export function drawGround(scene, x, y, random) {
   const view = scene.add.container(x * 600, y * 600).setDepth(-10);
   const g = scene.add.graphics();
   view.add(g);
-  g.fillStyle(0xb9ad91).fillRect(0, 0, 600, 600);
+  const [ground,shade,light,landmark,prop] = terrain[scene.profile.stage] || terrain[0];
+  g.fillStyle(ground).fillRect(0, 0, 600, 600);
   // Low-contrast patches are visual decoration, never invisible obstacles.
   for (let i = 0; i < 9; i++) {
-    g.fillStyle(i % 2 ? 0xb0a487 : 0xc1b598, 0.55).fillEllipse(
+    g.fillStyle(i % 2 ? shade : light, 0.55).fillEllipse(
       random() * 600,
       random() * 600,
       70 + random() * 140,
@@ -322,6 +337,16 @@ export function drawGround(scene, x, y, random) {
         .setScale(0.5 + random() * 0.4)
         .setAlpha(0.6),
     );
+  // Jitter one cluster inside each cell, leaving open lanes between silhouettes.
+  for (let cell = 0; cell < 4; cell++) {
+    const px = 80 + (cell % 2) * 300 + random() * 130;
+    const py = 85 + Math.floor(cell / 2) * 300 + random() * 125;
+    const large = (cell + x + 2*y) % 3 === 0;
+    const key = "scenery-" + (large ? landmark : prop);
+    const decor = scene.add.image(px, py, key).setScale((large ? 1.25 : .70) + random()*.22);
+    view.add(decor);
+    if (large) view.add(scene.add.image(px+76, py+26, "scenery-"+prop).setScale(.58));
+  }
   return view;
 }
 
