@@ -14,7 +14,7 @@ import { Combat } from "./combat.js";
 import { CLASSES, classById, updateClassWeapon } from "./classes.js";
 import { DamageNumbers } from "./damage-numbers.js";
 import {
-  artKeys,
+  artKeys, sceneryDepth,
   renderPanel,
   drawGround,
   combatFeedback,
@@ -1636,6 +1636,17 @@ class ge extends Lt.Scene {
           break;
         }
       }
+    // Feet determine which side of trunks and facades each actor occupies.
+    const playerDepth = sceneryDepth(this.player.y + this.player.displayHeight*.38);
+    this.player.setDepth(playerDepth);
+    this.gun.setDepth(playerDepth+.00001);
+    if(this.mount){
+      this.mount.sprite.setDepth(playerDepth-.00002);
+      this.mount.gait?.layers.forEach((layer,i)=>layer.setDepth(playerDepth-.00003+i*.00002));
+    }
+    for(const enemy of this.enemies){
+      enemy.s.setDepth(sceneryDepth(enemy.s.y+enemy.s.displayHeight*.38));
+    }
     updatePresentation(this, S > 0 || rolling);
     drawStatusEffects(this);
     updateBuffIcons(this);

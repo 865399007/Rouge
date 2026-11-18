@@ -13,8 +13,18 @@ const terrain = [
   [0xabb5a8,0x909e92,0xc7cbb6,"dish","cabinet"],
   [0xc6b198,0xab957e,0xdcc7a6,"keep","brazier"],
 ];
+// Secondary silhouettes vary with the habitat, including rare built landmarks.
+const habitats = [
+  ["water-tower","oak","locker","fern"], ["gantry","willow","buoy","fern"],
+  ["gantry","locker","cart","barrier"], ["fungus-tree","fern","willow","oak"],
+  ["cart","gantry","pine","locker"], ["lamps","barrier","planter","locker"],
+  ["anchor","willow","gantry","reeds"], ["broken-deck","pine","lamps","barrier"],
+  ["mast","pine","locker","fern"], ["banner","oak","brazier","water-tower"],
+];
+const flatScenery = new Set(["rails","broken-deck"]);
+export const sceneryDepth = feet => 4 + feet / 16000;
 export const artKeys = [
-  ...terrain.flatMap(row => row.slice(3).map(name => "scenery-"+name)),
+  ...new Set([...terrain.flatMap(row => row.slice(3)), ...habitats.flat()].map(name => "scenery-"+name)),
   "mount-boar-body", "mount-lynx-body", "mount-stag-body",
   "mount-walker-chassis", "mount-walker", "mount-stag", "mount-drake", "mount-lynx", "mount-boar",
   "hero-ranger",
@@ -337,16 +347,35 @@ export function drawGround(scene, x, y, random) {
         .setScale(0.5 + random() * 0.4)
         .setAlpha(0.6),
     );
-  // Jitter one cluster inside each cell, leaving open lanes between silhouettes.
-  for (let cell = 0; cell < 4; cell++) {
-    const px = 80 + (cell % 2) * 300 + random() * 130;
-    const py = 85 + Math.floor(cell / 2) * 300 + random() * 125;
-    const large = (cell + x + 2*y) % 3 === 0;
-    const key = "scenery-" + (large ? landmark : prop);
-    const decor = scene.add.image(px, py, key).setScale((large ? 1.25 : .70) + random()*.22);
-    view.add(decor);
-    if (large) view.add(scene.add.image(px+76, py+26, "scenery-"+prop).setScale(.58));
+  const palette = habitats[scene.profile.stage] || habitats[0];
+  const upright = [];
+  const placed = [];
+  const count = 3 + Math.floor(random()*4);
+  // Reserve one main silhouette, then sample the smaller props without replacement.
+  const pool = [prop, ...new Set(palette.slice(1).filter(name => name !== prop))];
+  const main = random() < .52 ? landmark : palette[0];
+  for (let i=0; i<count; i++) {
+    const key = i===0 ? main : pool.splice(Math.floor(random()*pool.length),1)[0];
+    if (!key) break;
+    const scale = i===0 ? 1.15+random()*.65 : .58+random()*.54;
+    let px,py,clear=false;
+    for (let attempt=0; attempt<12 && !clear; attempt++) {
+      px=74+random()*452; py=100+random()*445;
+      clear=placed.every(point=>Math.hypot(px-point.x,py-point.y)>78*scale);
+    }
+    if (!clear) continue;
+    placed.push({x:px,y:py});
+    const sprite=scene.add.image(x*600+px,y*600+py,"scenery-"+key)
+      .setOrigin(.5,.88).setScale(scale).setFlipX(random()<.5);
+    if(flatScenery.has(key)){
+      sprite.setPosition(px,py);
+      view.add(sprite);
+    } else {
+      sprite.setDepth(sceneryDepth(sprite.y));
+      upright.push(sprite);
+    }
   }
+  view.once("destroy",()=>{for(const sprite of upright) if(sprite.active)sprite.destroy();});
   return view;
 }
 
