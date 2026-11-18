@@ -103,19 +103,19 @@ export const CLASSES = [
     id: "astronomer", name: "引星师", weapon: "星盘", icon: "constellation", texture: "star-dial",
     hp: 95, speed: 208, armor: 2, power: 1, crit: 0.05,
     cooldown: 2.3, damage: 38, range: 360, color: 0xc9a5f0,
-    description: "星盘标记最多三个敌人，0.8 秒后同时引爆星印。",
-    strengths: "三重星印 · 延时引爆", weakness: "伤害延迟生效",
+    description: "星盘起始标记三个敌人，0.8 秒后同时引爆星印。",
+    strengths: "多重星印 · 延时引爆", weakness: "伤害延迟生效",
   },
 ];
 export function classById(id) {
   return CLASSES.find((c) => c.id === id);
 }
 
-function updateConstellation(scene, job, enemies, dt) {
+function updateConstellation(scene, job, enemies, dt, tier) {
   if (!scene.constellation) {
     if (scene.weaponClock > 0) return;
     const targets = enemies.filter(e => scene.distance(scene.player, e.s) <= job.range)
-      .sort((a, b) => scene.distance(scene.player, a.s) - scene.distance(scene.player, b.s)).slice(0, 3);
+      .sort((a, b) => scene.distance(scene.player, a.s) - scene.distance(scene.player, b.s)).slice(0, 3 + tier);
     if (!targets.length) return;
     scene.constellation = { targets, remaining: 0.8, art: scene.add.graphics().setDepth(7) };
     scene.weaponClock = job.cooldown * (1 - scene.build.haste);
@@ -147,8 +147,10 @@ export function updateClassWeapon(scene, dt) {
   const job = scene.job;
   if (!job) return;
   scene.weaponClock = Math.max(0, (scene.weaponClock || 0) - dt);
+  const tier = Number(scene.level >= 6) + Number(scene.level >= 13);
+  const range = job.range + (job.id === "vanguard" ? 22 * tier : 0);
   const enemies = scene.enemies.filter((e) => e.s.active);
-  if (job.id === "astronomer") return updateConstellation(scene, job, enemies, dt);
+  if (job.id === "astronomer") return updateConstellation(scene, job, enemies, dt, tier);
   const nearest = (origin, range) =>
     enemies
       .filter((e) => scene.distance(origin, e.s) < range + e.r)
@@ -189,7 +191,7 @@ export function updateClassWeapon(scene, dt) {
       t.art.setAlpha(Math.min(1, t.life / 2));
       t.clock -= dt;
       const target = enemies
-        .filter((e) => scene.distance(t, e.s) < job.range + e.r)
+        .filter((e) => e.s.active && scene.distance(t, e.s) < job.range + e.r)
         .sort(
           (a, b) =>
             Number(b.boss || false) - Number(a.boss || false) ||
@@ -208,12 +210,12 @@ export function updateClassWeapon(scene, dt) {
       scene.combat.cancelLine(t, target.s, 2);
       scene.effect(beam, 0.12);
       scene.combat.damage(target, scene.build.weaponDamage(job.damage), "physical");
-      t.clock = 0.65 * (1 - scene.build.haste);
+      t.clock = (0.65 - .10 * tier) * (1 - scene.build.haste);
       return true;
     });
     return;
   }
-  const target = nearest(scene.player, job.range);
+  const target = nearest(scene.player, range);
   if (!target || scene.weaponClock > 0) return;
   scene.weaponClock = job.cooldown * (1 - scene.build.haste);
   const angle = Math.atan2(
@@ -222,21 +224,21 @@ export function updateClassWeapon(scene, dt) {
     ),
     damage = scene.build.weaponDamage(job.damage);
   if (job.id === "vanguard") {
-    scene.combat.cancelArea(scene.player.x,scene.player.y,job.range,angle,1.2);
+    scene.combat.cancelArea(scene.player.x,scene.player.y,range,angle,1.2);
     const g = scene.add
       .graphics({ x: scene.player.x, y: scene.player.y })
       .setDepth(8);
     for (let i=0; i<3; i++) {
       g.lineStyle(3+i, job.color, 0.7).beginPath()
-        .arc(0,0,job.range*(0.58+i*0.12),angle-1.3+i*0.12,angle+0.65+i*0.2).strokePath();
+        .arc(0,0,range*(0.58+i*0.12),angle-1.3+i*0.12,angle+0.65+i*0.2).strokePath();
     }
     g.lineStyle(16, job.color, 0.6)
       .beginPath()
-      .arc(0, 0, job.range, angle - 1.2, angle + 1.2)
+      .arc(0, 0, range, angle - 1.2, angle + 1.2)
       .strokePath();
     scene.effect(g, 0.2);
     for (const e of enemies) {
-      if (scene.distance(scene.player, e.s) > job.range + e.r) continue;
+      if (scene.distance(scene.player, e.s) > range + e.r) continue;
       const a =
         Math.atan2(e.s.y - scene.player.y, e.s.x - scene.player.x) - angle;
       if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) > 1.2) continue;
@@ -253,9 +255,9 @@ export function updateClassWeapon(scene, dt) {
   }
   const returning = job.id === "warden",
     explosive = job.id === "pyromancer",
-    count = job.id === "ranger" ? 2 : 1;
+    count = job.id === "ranger" ? 2 + tier : returning && tier === 2 ? 2 : 1;
   for (let i = 0; i < count && scene.bullets.length < 250; i++) {
-    const a = angle + (i - (count - 1) / 2) * 0.07,
+    const a = angle + (i - (count - 1) / 2) * (returning ? .34 : .055),
       speed = returning ? 320 : explosive ? 300 : 560;
     const sprite = returning
       ? scene.add.image(scene.player.x, scene.player.y, "shield").setScale(0.7)
@@ -275,16 +277,16 @@ export function updateClassWeapon(scene, dt) {
       vy: Math.sin(a) * speed,
       life: returning ? 1.8 : 1.65,
       damage,
-      pierce: returning ? 99 : 1,
+      pierce: returning ? 99 : job.id === "ranger" ? 1 + tier : 1,
       color: job.color,
       trail: 0,
       hit: new Set(),
       element: explosive ? "fire" : "physical",
       explosive,
-      blastRadius: 68,
+      blastRadius: explosive ? 68 + 22 * tier : 68,
       returning,
       returnAt: 0.65,
-      returnSpeed: 360,
+      returnSpeed: 360 + (returning ? 65 * tier : 0),
       age: 0,
     });
   }
