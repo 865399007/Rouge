@@ -13,8 +13,8 @@
  display:grid;gap:4px;pointer-events:auto;color:#f7df9f;text-align:right}
 #tower-tools output {text-shadow:0 1px 3px #122629}
 #tower-tools button {touch-action:none;user-select:none;cursor:grab;font-size:clamp(11px,1.4cqw,16px)}
-.placement-wheel {position:absolute;right:calc(100% + 10px);transform:translateY(-50%);
- width:clamp(86px,min(19vw,31dvh),146px);aspect-ratio:1;border-radius:50%;pointer-events:none;
+.placement-wheel {position:absolute;left:50%;transform:translate(-50%,-50%);z-index:1;
+ width:min(clamp(86px,min(19vw,31dvh),146px),calc(100% + 4cqw - 4px));aspect-ratio:1;border-radius:50%;pointer-events:none;
  border:2px solid #dfece0;background:radial-gradient(circle,#38514fe8 28%,#acc2af 29%,#334e4ce6 31%)}
 .placement-wheel i {position:absolute;top:50%;left:50%;width:16%;aspect-ratio:1;
  border-radius:50%;background:#f3dca6;transform:translate(-50%,-50%)}

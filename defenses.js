@@ -37,13 +37,13 @@ export class Defenses {
     this.buttons=types.map(type=>{
       const button=document.createElement("button");
       button.textContent=type.icon+" "+type.name+" · "+type.cost;
-      button.title="按住并拖入轮盘选择位置，松手建造";
+      button.title="按住后在轮盘上拖动选址，松手建造";
       this.tools.append(button);
       button.onpointerdown=event=>{
         if(scene.mode!=="play" || this.drag || event.button!==0)return;
         event.preventDefault();
         button.setPointerCapture(event.pointerId);
-        this.drag={id:event.pointerId,type,x:event.clientX,y:event.clientY};
+        this.drag={id:event.pointerId,type,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY};
         this.wheel.style.top=(button.offsetTop+button.offsetHeight/2)+"px";
         this.wheel.hidden=false;
         this.drawPreview();
@@ -57,7 +57,8 @@ export class Defenses {
         if(this.drag?.id!==event.pointerId)return;
         Object.assign(this.drag,{x:event.clientX,y:event.clientY});
         const point=this.location();
-        if(scene.mode==="play" && point && this.valid(point))this.build(type,point);
+        const moved=Math.hypot(event.clientX-this.drag.startX,event.clientY-this.drag.startY)>=4;
+        if(moved && scene.mode==="play" && point && this.valid(point))this.build(type,point);
         this.cancel();
       };
       button.onlostpointercapture=button.onpointercancel=event=>{
