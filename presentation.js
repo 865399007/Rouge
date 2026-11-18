@@ -253,6 +253,12 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
       : "W A S D  移动    /    SPACE  暂停    /    触屏拖动左侧移动",
   );
   panel.append(footer);
+  if (scene.mode === "pause") {
+    overlay.classList.add("pause-overlay");
+    const resume = list.querySelector("button");
+    resume.textContent = "继续游戏";
+    panel.replaceChildren(resume);
+  }
   document.getElementById("game").append(overlay);
   const priorFocus = document.activeElement;
   const trap = (event) => {

@@ -1610,3 +1610,44 @@ kbd {
   .game-top > #pause, .game-top .settings summary { width: 48px; height: 48px; }
   .game-top svg { width: 30px; height: 30px; }
 }
+
+/* Match the landscape mini-game panels in the same logical coordinate space. */
+@media (orientation: landscape) {
+  .modal-overlay, .hud { zoom: var(--ui-scale, 1); }
+  #game .modal-overlay { padding: 24px 46px; background: rgb(40 37 29 / 65%); backdrop-filter: none; }
+  #game .game-menu {
+    width: min(1030px, 100%); max-height: 100%; overflow: auto; padding: 23px 28px 26px;
+    background: #f0e6cd; border: 4px solid #322e23; border-radius: 20px;
+    box-shadow: 0 12px #322e2373;
+  }
+  #game .lobby-menu { width: min(870px, 100%); min-height: 420px; }
+  #game .game-menu h1 { font: bold 32px/1.2 sans-serif; margin: 0 0 12px; }
+  #game .lobby-tabs { margin: 12px 0; gap: 6px; }
+  #game .lobby-tabs button { min-height: 39px; font-size: 16px; }
+  #game .lobby-grid { grid-template-columns: repeat(5,minmax(0,1fr)); gap: 10px; }
+  #game .stage-grid button { min-height: 94px; }
+  #game .menu-heading, #game .menu-footer { text-align: center; }
+  #game .choice-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+  #game .starter-grid { grid-template-columns: repeat(6,minmax(0,1fr)); }
+  #game .choice-card { min-width: 0; padding: 20px 12px; min-height: 325px; border: 3px solid #322e23; background: #f9f1dc; }
+  #game .class-card { padding: 12px 10px; min-height: 192px; }
+  #game .class-card .class-portrait { height: 70px; }
+  #game .selection-menu .choice-detail { white-space: pre-line; line-height: 1.35; }
+  #game .hud { inset: 0; }
+  #game .vitals { top: 12px; left: 50px; width: 225px; }
+  #game .game-top { top: 7px; right: max(11%, env(safe-area-inset-right)); gap: 8px; }
+  #game .game-top > #pause, #game .settings summary { width: 74px; height: 74px; padding: 12px; }
+  #game .game-top svg { width: 40px; height: 40px; }
+  #game .action-pad { inset: 0; display: block; }
+  #game .action-pad #tower-tools { position: absolute; display: grid; width: 74px; right: 54px; left: auto; top: 50%; bottom: auto; transform: translateY(-50%); grid-template-columns: 74px; gap: 8px; }
+  #game #tower-tools output { position: absolute; bottom: 100%; width: 100%; }
+  #game #tower-tools button { width: 74px; height: 74px; background: rgb(249 241 220 / 25%); }
+  #game #roll { position: absolute; left: 91%; top: 86.5%; transform: translate(-50%,-50%); width: 108px; height: 108px; margin: 0; background: rgb(249 241 220 / 25%); }
+  #game .stats span:first-child, #game .controls-hint { display: none; }
+  #game:not(.has-panel) .joystick[hidden] { display: grid !important; left: calc(111px * var(--ui-scale)); top: calc(100% - 105px * var(--ui-scale)); }
+  #game .joystick { width: 19vh; height: 19vh; background: rgb(49 57 45 / 26%); border-color: #f9f1dcad; }
+  #game .joystick-knob { width: 38%; height: 38%; border: 0; background: #f9f1dccc; box-shadow: none; }
+}
+#game .pause-overlay { background: rgb(40 37 29 / 35%); backdrop-filter: none; }
+#game .pause-overlay .game-menu { display: contents; }
+#game .pause-overlay button { display: grid; place-items: center; width: 200px; height: 64px; min-height: 0; padding: 0; font: bold 24px sans-serif; background: #f0e6cd; border: 3px solid #322e23; border-radius: 12px; box-shadow: 0 4px #322e2373; }

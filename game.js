@@ -1640,6 +1640,7 @@ const Ct = new Lt.Game({
 function xe() {
   const st = document.getElementById("game").getBoundingClientRect(),
     b = Math.max(900, Math.round((620 * st.width) / Math.max(1, st.height)));
+  Zt.style.setProperty("--ui-scale", String(st.width / b));
   Ct.scale.resize(
     b,
     Math.max(620, Math.round((b * st.height) / Math.max(1, st.width))),
