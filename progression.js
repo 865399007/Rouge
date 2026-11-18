@@ -57,10 +57,11 @@ export class Build {
   get power() {
     const level = this.heroLevel;
     const growth = 1 + .04 * (level - 1) + .14 * Math.max(0, level - 5) + .20 * Math.max(0, level - 12);
-    return growth * (1 + 0.08 * (this.attributes.power || 0));
+    return growth * (1 + .04*(this.profile?.stats.power || 0)) * (1 + 0.08 * (this.attributes.power || 0));
   }
   weaponDamage(base, level = this.attributes.weaponMastery || 0) {
-    return base * this.power * (1 + level * weaponMasteryStep);
+    const rank = this.profile?.gear["weapon-"+this.job?.id]?.rank || 1;
+    return base * (1 + .15*(rank-1)) * this.power * (1 + level * weaponMasteryStep);
   }
   get haste() {
     return 0.06 * (this.attributes.haste || 0);
@@ -72,7 +73,7 @@ export class Build {
     return (this.job?.crit ?? 0.05) + 0.04 * (this.attributes.crit || 0);
   }
   get armor() {
-    return (this.job?.armor || 0) + 5 * (this.attributes.armor || 0);
+    return (this.job?.armor || 0) + 2*(this.profile?.stats.armor || 0) + 5 * (this.attributes.armor || 0);
   }
   get regen() {
     return 0.2 * (this.attributes.regen || 0);
@@ -160,7 +161,7 @@ export class Build {
       scene.roll.sync();
     }
     scene.maxHp =
-      (this.job?.hp ?? BALANCE.player.hp) +
+      (this.job?.hp ?? BALANCE.player.hp) + 8*(this.profile?.stats.hp || 0) +
       12 * (this.attributes.vitality || 0);
     if (a.id === "vitality") scene.hp = Math.min(scene.maxHp, scene.hp + 12);
     scene.speed = Math.round(

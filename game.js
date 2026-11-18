@@ -1,5 +1,6 @@
+import { stages, stageWaves, loadLobby, saveLobby, renderLobby, rewardVictory } from "./lobby.js";
 import { ImpactAudio } from "./impact-audio.js";
-import { waves, encounterAngle, updateSupply, updateBossRing } from "./encounters.js";
+import { encounterAngle, updateSupply, updateBossRing } from "./encounters.js";
 import {
   BALANCE,
   xpToNext,
@@ -18,14 +19,15 @@ import {
   combatFeedback,
   energyBurst,
   updatePresentation,
+  updateWeaponPose,
   preloadBuffIcons,
   updateBuffIcons,
   drawStatusEffects,
   drawOrbit,
   drawArc,
-} from "./presentation.js?v=ten-waves-1";
+} from "./presentation.js?v=lobby-1";
 import Lt from "./vendor/phaser.js";
-import { Defenses, advancePickupFlight } from "./defenses.js?v=ten-waves-1";
+import { Defenses, advancePickupFlight } from "./defenses.js?v=lobby-1";
 import { segmentCircleEntry } from "./geometry.js";
 import { updateMount } from "./mounts.js";
 import { Roll } from "./roll.js";
@@ -487,6 +489,9 @@ class ge extends Lt.Scene {
     for (const key of artKeys) this.load.svg(key, `./assets/${key}.svg`);
   }
   create() {
+    this.profile = loadLobby();
+    this.stageName = stages[this.profile.stage][0];
+    this.waves = stageWaves(this.profile.stage);
     this.job = null;
     this.weaponClock = 0;
     this.classTurrets = [];
@@ -614,13 +619,14 @@ class ge extends Lt.Scene {
       this.timerText.setVisible(false),
       this.hint.setVisible(false),
       this.sync(),
-      this.showPanel("末日小队", "清空十波敌人，夺回街区。每波结束可整备 4 秒。", [
-        {
-          title: "出发，守住这一夜",
-          detail: "选择技能，进入街区",
-          action: () => this.chooseClass(),
-        },
-      ]));
+      this.openLobby("关卡", this.victoryMessage));
+    this.victoryMessage = "";
+  }
+  openLobby(tab, message) {
+    this.closePanel();
+    Tt.enabled = false;
+    document.getElementById("game").classList.add("has-panel");
+    renderLobby(this,tab,message);
   }
   drawTextures() {}
   get movementSpeed() {
@@ -680,26 +686,32 @@ class ge extends Lt.Scene {
   chooseClass() {
     this.showUpgradeCards(
       "选择职业",
-      "点选职业出发 · 武器自动攻击",
+      stages[this.profile.stage][0] + " · 点选职业出发",
       CLASSES.map((job) => ({
         id: job.icon,
         title: job.name,
         job,
         levelText: job.weapon,
-        detail: `${job.strengths}\n生命 ${job.hp} · 护甲 ${job.armor}`,
+        detail: `${job.strengths}\n生命 ${job.hp + 8*(this.profile.stats.hp || 0)} · 护甲 ${job.armor + 2*(this.profile.stats.armor || 0)}`,
         action: () => this.selectClass(job.id),
       })),
     );
+    const back = document.createElement("button");
+    back.textContent = "返回关卡";
+    back.onclick = () => this.openLobby("关卡");
+    this.panel.element.querySelector(".menu-heading").append(back);
   }
   selectClass(id) {
     const job = classById(id);
     if (!job || this.mode !== "ready") return;
     this.job = job;
-    this.maxHp = this.hp = job.hp;
+    this.build.profile = this.profile;
+    this.maxHp = this.hp = job.hp + 8*(this.profile.stats.hp || 0);
     this.speed = job.speed;
     this.build.job = job;
     this.player.setTexture(`hero-${id}`);
     this.gun.setTexture(job.texture);
+    updateWeaponPose(this);
     document.getElementById("job-name").textContent = job.name;
     this.defenses.stock = job.materials ?? BALANCE.initialMaterials;
     this.defenses.refresh();
@@ -1204,7 +1216,8 @@ class ge extends Lt.Scene {
       .setDepth(5)
       .setScale(stat.final ? 3 : 2.15)
       .setTint(stat.final ? 0xe7bbad : 0xd6c293);
-    this.enemies.push({ ...stat, s: sprite });
+    const hp = Math.round(stat.hp * (1 + this.profile.stage*.08));
+    this.enemies.push({ ...stat, hp, maxHp:hp, s: sprite });
     return true;
   }
   beginDefeat() {
@@ -1230,6 +1243,15 @@ class ge extends Lt.Scene {
     if (this.deathElapsed >= .62) this.finish(false);
   }
   finish(b) {
+    if (this.mode === "end") return;
+    if (b) {
+      this.mode = "end";
+      pt.play("win");
+      this.victoryMessage = rewardVictory(this.profile,this.profile.stage);
+      saveLobby(this.profile);
+      this.scene.restart();
+      return;
+    }
     (pt.play(b ? "win" : "lose"),
       (this.mode = "end"),
       this.showPanel(
@@ -1237,7 +1259,7 @@ class ge extends Lt.Scene {
         `第 ${this.wave}/10 波 · 用时 ${Math.floor(this.runTime)} 秒 · 击败 ${this.kills} 只丧尸 · 等级 ${this.level}`,
         [
           {
-            title: "再次出击 →",
+            title: "返回关卡大厅",
             detail: "重新开始行动",
             action: () => this.scene.restart(),
           },
@@ -1292,22 +1314,9 @@ class ge extends Lt.Scene {
           .toString()
           .padStart(2, "0")}`,
       ));
-    updatePresentation(
-      this,
-      this.keys.W.isDown ||
-        this.keys.A.isDown ||
-        this.keys.S.isDown ||
-        this.keys.D.isDown ||
-        this.keys.UP.isDown ||
-        this.keys.LEFT.isDown ||
-        this.keys.DOWN.isDown ||
-        this.keys.RIGHT.isDown ||
-        Tt.x ||
-        Tt.y,
-    );
-    let encounter = waves[this.wave - 1];
+    let encounter = this.waves[this.wave - 1];
     if (this.waveSpawned === encounter.total && this.enemies.length === 0) {
-      if (this.wave === waves.length) {
+      if (this.wave === this.waves.length) {
         this.finish(true);
         return;
       }
@@ -1318,7 +1327,7 @@ class ge extends Lt.Scene {
       }
       if (this.runTime >= this.waveBreakUntil) {
         this.wave++;
-        encounter = waves[this.wave - 1];
+        encounter = this.waves[this.wave - 1];
         this.waveSpawned = this.encounterBatch = this.spawnClock = this.waveBreakUntil = 0;
         this.encounterHeading = this.build.random()*Math.PI*2;
       }
@@ -1371,8 +1380,8 @@ class ge extends Lt.Scene {
             : encounter.kinds[(i + (encounter.crossfire ? 0 : this.encounterBatch)) % encounter.kinds.length];
           this.enemies.push({
             ...(elite
-              ? eliteStats((this.wave - 1)*48)
-              : enemyStats(kind, (this.wave - 1)*48)),
+              ? eliteStats((this.wave - 1)*48 + this.profile.stage*18)
+              : enemyStats(kind, (this.wave - 1)*48 + this.profile.stage*18)),
             kind, bounty,
             s: this.add
               .image(point.x, point.y, kind)
@@ -1608,6 +1617,7 @@ class ge extends Lt.Scene {
           break;
         }
       }
+    updatePresentation(this, S > 0 || rolling);
     drawStatusEffects(this);
     updateBuffIcons(this);
   }

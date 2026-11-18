@@ -169,7 +169,8 @@ export function ride(scene, type) {
   const label = scene.add.text(x, y + 47, type.name + " · " + type.passiveName + " · 60秒", {
     fontSize: "12px", color: "#fff2cf", stroke: "#342d26", strokeThickness: 3,
   }).setOrigin(0.5, 0).setDepth(9);
-  scene.mount = { type, sprite, label, shield: type.shield || 0, remaining: 60, cooldown: 0 };
+  const rank = scene.profile?.gear["mount-"+type.id]?.rank || 1;
+  scene.mount = { rank, type, sprite, label, shield: type.shield || 0, remaining: 60, cooldown: 0 };
   scene.mount.trail = { x, y, carry: 0, side: 1 };
   if (walker || animal) {
     const layers = [4.8, 4.95].map(depth => scene.add.graphics().setDepth(depth));
@@ -220,7 +221,7 @@ export function updateMount(scene, dt) {
   const g = scene.add.graphics().setDepth(7).lineStyle(4, type.color, 0.85);
   const angle = Math.atan2(target.s.y - p.y, target.s.x - p.x);
   const hit = (e, element, factor = 1) => {
-    if (scene.mode === "play") scene.combat.damage(e, type.damage * scene.build.power * factor, element);
+    if (scene.mode === "play") scene.combat.damage(e, type.damage * (1 + .15*(mount.rank-1)) * scene.build.power * factor, element);
   };
   switch (type.id) {
     case "walker":

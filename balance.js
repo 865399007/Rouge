@@ -171,7 +171,7 @@ export function skillStats(skill, level = skill.level || 1, build) {
     ...tuning,
     damage:
       Math.round(
-        tuning.base * BALANCE.damageScales[i] * (build?.power || 1) * 10,
+        tuning.base * (1 + .08*(build?.profile?.skills[skill.id] || 0)) * BALANCE.damageScales[i] * (build?.power || 1) * 10,
       ) / 10,
     cooldown:
       Math.round(

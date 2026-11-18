@@ -1,4 +1,3 @@
-import { waves } from "./encounters.js";
 import { BALANCE, variants } from "./balance.js";
 // Original vector art and presentation layer.
 export const artKeys = [
@@ -440,12 +439,14 @@ export function updatePresentation(scene, moving) {
     .padStart(2, "0")}:${Math.floor(scene.runTime % 60)
     .toString()
     .padStart(2, "0")}`;
+  const waves = scene.waves;
   const stage = waves[scene.wave - 1];
   const remaining = stage.total - scene.waveSpawned + scene.enemies.length;
   const waveLabel = document.getElementById("wave");
   const waveText = scene.waveBreakUntil
     ? `整备 ${Math.max(0, Math.ceil(scene.waveBreakUntil-scene.runTime))} 秒 · 下一波 ${waves[scene.wave]?.name}`
-    : `第 ${scene.wave}/${waves.length} 波 · ${stage.name} · 剩 ${remaining}`;
+    : `${scene.stageName} · ${scene.wave}/${waves.length} 波 · 剩 ${remaining}`;
+  waveLabel.title = stage.name;
   if (waveLabel.textContent !== waveText) waveLabel.textContent = waveText;
   const warning = document.getElementById("boss-warning");
   const bossAt = Math.floor(stage.total/2);
@@ -461,6 +462,10 @@ export function updatePresentation(scene, moving) {
     BALANCE.player.visualScale * (scene.mount ? 0.75 : 1) * (1 + Math.abs(bounce) * 0.035),
     BALANCE.player.visualScale * (scene.mount ? 0.75 : 1) * (1 - Math.abs(bounce) * 0.045),
   );
+  updateWeaponPose(scene);
+}
+
+export function updateWeaponPose(scene) {
   const target = scene.enemies.reduce(
     (best, e) =>
       !best ||
@@ -469,15 +474,13 @@ export function updatePresentation(scene, moving) {
         : best,
     null,
   );
-  if (target) {
-    const a = Math.atan2(
-      target.s.y - scene.player.y,
-      target.s.x - scene.player.x,
-    );
-    scene.gun.setRotation(a).setFlipY(Math.cos(a) < 0);
-    scene.gun.setPosition(
-      scene.player.x + Math.cos(a) * 23 * scene.player.scaleX,
-      scene.player.y + (9 + Math.sin(a) * 12) * scene.player.scaleY,
-    );
-  }
+  const angle = target
+    ? Math.atan2(target.s.y - scene.player.y, target.s.x - scene.player.x)
+    : scene.gun.rotation;
+  scene.gun.setRotation(angle).setFlipY(Math.cos(angle) < 0);
+  scene.gun.setPosition(
+    scene.player.x + Math.cos(angle) * 23 * scene.player.scaleX,
+    scene.player.y + (9 + Math.sin(angle) * 12) * scene.player.scaleY,
+  );
 }
+
