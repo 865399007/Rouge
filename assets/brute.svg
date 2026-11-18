@@ -1,9 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="68" height="72" viewBox="0 0 68 72"><g stroke="#292822" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="34" cy="65" rx="30" ry="6" opacity=".2" stroke="none"/>
-<path d="m16 55-5 9 17-2m19-8 9 10-18-2" fill="#805d51"/>
-<path d="M12 29 6 14l16 8Q33 10 46 20l17-8-4 20q11 30-24 31T12 29Z" fill="#b88770"/>
-<path d="M12 31q-12 6-7 20l12 1m40-21q10 6 6 20l-12 1" fill="#a47660"/>
-<path d="m13 30 15 6m13 0 15-7" stroke-width="5"/>
-<path d="M20 36h7v7h-7zm21 0h7v7h-7z" fill="#f2cf72" stroke-width="2"/>
-<path d="M23 49q10-6 23 0l-4 10H26Z" fill="#433735"/>
-<path d="m26 49 3 5 3-7m6 0 2 7 3-5" fill="#f5e8c9" stroke-width="2"/>
-<path d="m30 23 5-3 5 4" stroke="#d6ab85"/><path d="m7 42 4 2m44 9 4-2" stroke="#d3a180"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="68" height="72" viewBox="0 0 64 64"><title>畸变壮尸</title><ellipse cx="32" cy="57" rx="22" ry="4" fill="#252b27" opacity=".34"/><g stroke="#34342c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 42l11 1-3 13-4 3-13-1 1-5 7-2zm14 1 9-1 1 10 7 3-1 4-15-2z" fill="#555449"/><path d="M23 28l-8 2-7-4-4 3 6 6 14 3z" fill="#9a9b83"/><path d="M15 28q7-6 16-4l14 5 2 14-5 4-4-2-5 5-7-4-7 2-5-4z" fill="#766b75"/><path d="m26 31 4 5-2 6m7-3 4 1" fill="none"/><path d="M40 29l7 2 4-5 5-2 4 2-4 3 4 1-4 4-6 1-7 7-6-4z" fill="#9a9b83"/><g transform="translate(-3 0)"><path d="M20 13q1-8 15-8 13 0 14 11l-1 11-4 6-10 2-5-3-6 1-4-7-3-2 1-6 3 1z" fill="#9a9b83"/><path d="M21 17l9 1-2 7-6-1z" fill="#666e5e"/><circle cx="25" cy="20" r="2.5" fill="#fff0ad"/><circle cx="39" cy="19" r="3.7" fill="#fff0ad"/><circle cx="40" cy="19" r="1" fill="#403e34"/><path d="M31 26l12-2-1 6-9 1z" fill="#50453c"/><path d="m34 26 4-1-1 3-3 0z" fill="#e3d8ae"/><path d="m19 13 5 1m18 8 4-1" fill="none"/><path d="m21 10 18 4m-14-6-2 5m8-4-2 5m7-4-2 5" fill="none"/></g><path d="m5 28 11-4 9 8-4 11-14-2-5-6z" fill="#9a9b83"/><path d="m6 31 4 5m2-8 3 6" fill="none"/></g></svg>

@@ -42,7 +42,7 @@ export const artKeys = [
   "potato",
   "bug",
   ...Object.keys(variants),
-  "brute",
+  "brute", "zombie-elite", "zombie-breacher", "zombie-warden", "zombie-sovereign",
   "runner",
   "spitter",
   "gem",
@@ -217,7 +217,7 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
   if (scene.mode === "ready" && !cards) {
     const art = el("div", "hero-art");
     art.innerHTML =
-      '<div class="hero-orbit"></div><span class="hero-stamp">仅剩一个街区</span><img class="hero-monster one" src="./assets/bug.svg" alt="绿皮怪"><img class="hero-monster two" src="./assets/brute.svg" alt="重装怪"><img class="hero-tower" src="./assets/tower-rapid.svg" alt="圆形速射塔"><img class="hero-player" src="./assets/potato.svg" alt="头戴红色头巾的守夜人"><img class="hero-gun" src="./assets/gun.svg" alt=""><span class="hero-ground"></span>';
+      '<div class="hero-orbit"></div><span class="hero-stamp">仅剩一个街区</span><img class="hero-monster one" src="./assets/bug.svg" alt="街巷游尸"><img class="hero-monster two" src="./assets/brute.svg" alt="畸变壮尸"><img class="hero-tower" src="./assets/tower-rapid.svg" alt="圆形速射塔"><img class="hero-player" src="./assets/potato.svg" alt="头戴红色头巾的守夜人"><img class="hero-gun" src="./assets/gun.svg" alt=""><span class="hero-ground"></span>';
     panel.append(art);
     const rules = el("div", "briefing");
     for (const [n, label, text] of [

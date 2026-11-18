@@ -1307,7 +1307,7 @@ class ge extends Lt.Scene {
       return;
     }
     const sprite = this.add
-      .image(pos.x, pos.y, "brute")
+      .image(pos.x, pos.y, stat.final ? "zombie-sovereign" : index < 4 ? "zombie-breacher" : "zombie-warden")
       .setDepth(5)
       .setScale(stat.final ? 3 : 2.15)
       .setTint(stat.final ? 0xe7bbad : 0xd6c293);
@@ -1480,7 +1480,7 @@ class ge extends Lt.Scene {
               : enemyStats(kind, (this.wave - 1)*48 + this.profile.stage*18)),
             kind, bounty,
             s: this.add
-              .image(point.x, point.y, kind)
+              .image(point.x, point.y, elite ? "zombie-elite" : kind)
               .setDepth(4)
               .setScale(elite ? 1.25 : 1),
           });

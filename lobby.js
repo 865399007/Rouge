@@ -4,12 +4,12 @@ import { mounts } from "./mounts.js";
 import { skills } from "./battle-skills.js";
 
 export const stages = [
-  ["旧街哨站","街口虫群","bug","runner","front"],
+  ["旧街哨站","街口尸群","bug","runner","front"],
   ["雾港双桥","两岸夹击","spitter","moth","crossfire"],
   ["锈轨货场","铁甲纵队","crab","brute","front"],
-  ["孢子温室","孢子交火","pod","wisp","crossfire"],
+  ["孢子温室","疫囊交火","pod","wisp","crossfire"],
   ["断层矿道","跃袭矿道","hopper","ram","sweep"],
-  ["霓虹环道","锯轮绕袭","saw","runner","surround"],
+  ["霓虹环道","锯臂绕袭","saw","runner","surround"],
   ["沉钟码头","重炮封锁","snail","needle","crossfire"],
   ["风暴高架","突击车队","ram","saw","sweep"],
   ["静默天线阵","哨兵包围","twin","wisp","surround"],

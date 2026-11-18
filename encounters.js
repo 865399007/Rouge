@@ -1,13 +1,13 @@
 // Quotas count every combatant, including the boss. No clock advances the wave.
 export const waves = [
-  {name:"虫群探路", total:18, count:3, interval:1.35, kinds:["bug","bug","moth"]},
+  {name:"游尸逼近", total:18, count:3, interval:1.35, kinds:["bug","bug","moth"]},
   {name:"双巷夹击", total:26, count:4, interval:1.35, kinds:["runner","bug","runner","moth"], crossfire:true},
-  {name:"铁钳悬赏", total:30, count:3, interval:1.3, kinds:["crab","runner","bug"], bounty:true},
-  {name:"孢子火线", total:35, count:4, interval:1.35, kinds:["pod","hopper","runner","spitter"], crossfire:true},
-  {name:"破门巨兽", total:40, count:4, interval:1.2, kinds:["ram","bug","brute","runner"], bossIndex:0},
+  {name:"铁卫悬赏", total:30, count:3, interval:1.3, kinds:["crab","runner","bug"], bounty:true},
+  {name:"疫囊火线", total:35, count:4, interval:1.35, kinds:["pod","hopper","runner","spitter"], crossfire:true},
+  {name:"破门尸魁", total:40, count:4, interval:1.2, kinds:["ram","bug","brute","runner"], bossIndex:0},
   {name:"旋街追猎", total:48, count:5, interval:1.15, kinds:["saw","hopper","moth"], sweep:true},
-  {name:"针尾伏击", total:55, count:5, interval:1.2, kinds:["needle","crab","wisp","runner","crab"], crossfire:true},
-  {name:"装甲车阵", total:60, count:5, interval:1.1, kinds:["snail","ram","brute","saw"], sweep:true, bossIndex:4},
+  {name:"骨刺伏击", total:55, count:5, interval:1.2, kinds:["needle","crab","wisp","runner","crab"], crossfire:true},
+  {name:"罐甲尸阵", total:60, count:5, interval:1.1, kinds:["snail","ram","brute","saw"], sweep:true, bossIndex:4},
   {name:"四面合围", total:72, count:6, interval:1, kinds:["twin","runner","moth","needle","hopper","bug"], surround:true},
   {name:"黎明决战", total:80, count:6, interval:.95, kinds:["ram","wisp","saw","crab","runner","twin"], surround:true, bossIndex:8},
 ];

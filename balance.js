@@ -76,16 +76,16 @@ export function packSize(seconds) {
 }
 // New packs join the original four species progressively during a run.
 export const variants = {
-  moth:    { name: "鬼面蛾", at: 18, base: [20, 105, 6, 3], sway: 0.85, r: 15 },
-  crab:    { name: "铁钳蟹", at: 35, base: [45, 52, 12, 5], plating: 22, r: 23 },
-  hopper:  { name: "弹簧蚤", at: 55, base: [27, 81, 10, 4], surge: 1.6, r: 16 },
-  pod:     { name: "孢囊菇", at: 85, base: [38, 39, 6, 5], shots: 3, spread: 0.23, reload: 3.6, projectile: 124 },
-  wisp:    { name: "灯笼灵", at: 115, base: [23, 76, 8, 4], shots: 1, sway: 0.62, reach: 315, reload: 1.5, projectile: 205 },
-  ram:     { name: "撞槌兽", at: 155, base: [66, 64, 16, 6], surge: 2.5, r: 24 },
-  snail:   { name: "涡壳蜗", at: 200, base: [58, 32, 9, 6], shots: 5, spread: 0.37, reload: 4.6, projectile: 110, plating: 12 },
-  needle:  { name: "针尾蝎", at: 250, base: [35, 67, 14, 6], shots: 1, reload: 3.2, projectile: 295, reach: 375 },
-  twin:    { name: "双瞳哨兵", at: 305, base: [48, 55, 9, 6], shots: 2, spread: 0.15, reload: 2.2, projectile: 200 },
-  saw:     { name: "锯轮虫", at: 365, base: [43, 98, 13, 6], sway: 0.48, plating: 8, r: 19 },
+  moth:    { name: "尖啸舞尸", at: 18, base: [20, 105, 6, 3], sway: 0.85, r: 15 },
+  crab:    { name: "防暴铁卫尸", at: 35, base: [45, 52, 12, 5], plating: 22, r: 23 },
+  hopper:  { name: "跃袭病患", at: 55, base: [27, 81, 10, 4], surge: 1.6, r: 16 },
+  pod:     { name: "疫囊喷吐尸", at: 85, base: [38, 39, 6, 5], shots: 3, spread: 0.23, reload: 3.6, projectile: 124 },
+  wisp:    { name: "提灯巡夜尸", at: 115, base: [23, 76, 8, 4], shots: 1, sway: 0.62, reach: 315, reload: 1.5, projectile: 205 },
+  ram:     { name: "撞门工兵尸", at: 155, base: [66, 64, 16, 6], surge: 2.5, r: 24 },
+  snail:   { name: "罐甲重装尸", at: 200, base: [58, 32, 9, 6], shots: 5, spread: 0.37, reload: 4.6, projectile: 110, plating: 12 },
+  needle:  { name: "骨刺猎尸", at: 250, base: [35, 67, 14, 6], shots: 1, reload: 3.2, projectile: 295, reach: 375 },
+  twin:    { name: "双镜哨兵尸", at: 305, base: [48, 55, 9, 6], shots: 2, spread: 0.15, reload: 2.2, projectile: 200 },
+  saw:     { name: "锯臂屠夫尸", at: 365, base: [43, 98, 13, 6], sway: 0.48, plating: 8, r: 19 },
 };
 const variantPool = Object.entries(variants);
 const originalStats = {
