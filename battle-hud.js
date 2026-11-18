@@ -16,7 +16,11 @@ export function drawBattleHud({s,w,h,ids,screen,capRect,toggleNode,padNode,setti
     toggle.onclick=()=>{onToggle();};
     hit(toggle,gx-37,gy-37,74,74);hit(ids.pause,px-37,gy-37,74,74);
     if (!settingsOpen && s.defenses) {
-      const size = 144, x = px - size + 26, y = gy + 44, inset = 6;
+      const margin = 6;
+      const y = cap?.bottom ? cap.bottom*h/screen.windowHeight + margin : margin;
+      const towerLabelTop = (h - 238)/2 - 26;
+      const size = Math.min(144, towerLabelTop - y - margin);
+      const x = w - size - margin, inset = 6;
       const map = add(s.add.graphics());
       map.fillStyle(0x182326,.76).fillRoundedRect(x,y,size,size,8)
         .lineStyle(2,cream,.65).strokeRoundedRect(x,y,size,size,8);
