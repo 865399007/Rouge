@@ -1691,4 +1691,25 @@ kbd {
 }
 #game .upgrade-overlay .choice-title { font-size: clamp(15px,2vw,19px); }
 #game .upgrade-overlay .choice-detail { font-size: clamp(12px,1.6vw,14px); line-height: 1.35; white-space: pre-line; }
-#game .upgrade-overlay .choice-card:focus-visible { outline: 2px solid #ffcf57; }
+#game .upgrade-overlay .choice-card:focus-visible { outline: 2px dashed #fff3ca; }
+
+#game .upgrade-overlay { background: rgb(10 15 18 / 76%); flex-direction:column; gap:12px; overflow:auto; }
+#game .upgrade-overlay .menu-heading { color:white; text-align:center; margin:0; }
+#game .upgrade-overlay .menu-heading h1 { font-size:clamp(16px,3vh,24px); }
+#game .upgrade-overlay .menu-description { display:none; }
+@media(max-width:600px) and (orientation:portrait) {
+  #game .upgrade-overlay .choice-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+#game .upgrade-overlay [data-rarity="普通"] { background-color:#232a30; }
+#game .upgrade-overlay [data-rarity="稀有"] { background-color:#193e50; }
+#game .upgrade-overlay [data-rarity="史诗"] { background-color:#453151; }
+#game .upgrade-overlay [data-rarity="传说"] { background-color:#584020; }
+#game .upgrade-overlay [data-rarity="进化"] { background-color:#234b40; }
+#game .upgrade-overlay .choice-card[data-selected="true"] { outline:3px solid #ffcf57; }
+#game .draft-confirm { padding:8px 22px; border-radius:6px; background:#ffcf75; color:#302516; cursor:pointer; }
+#game .draft-confirm:disabled { opacity:.55; cursor:default; }
+#game .upgrade-overlay .choice-route {
+  grid-column: 1 / -1; align-self: end; justify-self: end;
+  text-align: right; color: #ead6aa; font-size: 12px; line-height: 1.3;
+}

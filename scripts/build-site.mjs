@@ -7,7 +7,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const output = path.join(root, 'dist');
 // Publish only runtime files, never local tooling, test outputs or credentials.
 const files = ['index.html', 'style.css', 'game.js', 'presentation.js', 'battle-hud.js', 'browser-hud.js',
-  'lobby.js', 'encounters.js', 'balance.js', 'progression.js', 'combat.js', 'impact-audio.js', 'classes.js', 'damage-numbers.js', 'roll.js', 'battle-skills.js', 'defenses.js', 'mounts.js', 'geometry.js', 'manifest.webmanifest',
+  'lobby.js', 'encounters.js', 'balance.js', 'progression.js', 'combat.js', 'impact-audio.js', 'classes.js', 'ranger.js', 'role-cards.js', 'role-combat.js', 'damage-numbers.js', 'roll.js', 'battle-skills.js', 'defenses.js', 'mounts.js', 'geometry.js', 'manifest.webmanifest',
   'assets', 'vendor'];
 await mkdir(output, { recursive: true });
 for (const file of files) await cp(path.join(root, file), path.join(output, file), { recursive: true });

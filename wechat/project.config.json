@@ -1,0 +1,12 @@
+{
+  "appid": "wx48e08013833a321a",
+  "projectname": "last-block-survivors-wechat",
+  "description": "末日小队微信小游戏适配工程",
+  "compileType": "game",
+  "libVersion": "latest",
+  "setting": {
+    "es6": true,
+    "minified": true,
+    "urlCheck": true
+  }
+}

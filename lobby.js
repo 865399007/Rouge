@@ -1,7 +1,6 @@
 import { waves } from "./encounters.js";
 import { CLASSES } from "./classes.js";
 import { mounts } from "./mounts.js";
-import { skills } from "./battle-skills.js";
 
 export const stages = [
   ["旧街哨站","街口尸群","bug","runner","front"],
@@ -15,15 +14,15 @@ export const stages = [
   ["静默天线阵","哨兵包围","twin","wisp","surround"],
   ["黎明要塞","铁壁合围","brute","twin","surround"],
 ];
-export const waveSeconds = 24;
+const spawnWindowSeconds = 50;
 export function stageWaves(index) {
   const [,theme,first,second,formation] = stages[index];
   return waves.map((wave,i) => {
     const featured = i % 3 === 0 || i === 8;
-    const total = Math.ceil((wave.total + Math.floor(index * (1+i/10))) * 1.4);
-    const count = Math.ceil(wave.count * 1.4);
-    const batches = Math.ceil(total / count);
-    return {...wave, total, count, interval: (waveSeconds - 4) / Math.max(1,batches-1),
+    const total = Math.round(wave.total * 0.5) + Math.floor(index * (1 + i / 10));
+    const count = 4 + i;
+    const interval = spawnWindowSeconds / (Math.ceil(total / count) - 1);
+    return {...wave, total, count, interval,
       ...(featured ? {name:theme, kinds:[first,second,...wave.kinds],
         crossfire:formation==="crossfire", sweep:formation==="sweep", surround:formation==="surround"} : {})};
   });
@@ -31,7 +30,6 @@ export function stageWaves(index) {
 
 const key = "rouge-lobby-v1";
 const costs = [0,4,8,14,22];
-const attributes = {hp:["体魄","生命 +8"], power:["力量","全伤害 +4%"], armor:["坚韧","护甲 +2"]};
 const equipment = {
   weapon: CLASSES.map(j=>({id:j.id,name:j.weapon,image:j.texture})),
   mount: mounts.map(m=>({id:m.id,name:m.name,image:"mount-"+m.id})),
@@ -92,20 +90,14 @@ function node(tag,text,cls) {
   if(cls) n.className=cls;
   return n;
 }
-export function renderLobby(scene,tab="关卡",message="") {
+export function renderLobby(scene,message="") {
   const p=scene.profile, overlay=node("div",null,"modal-overlay lobby-overlay");
   const panel=node("section",null,"game-menu lobby-menu");
   overlay.setAttribute("role","dialog"); overlay.setAttribute("aria-label","守夜大厅");
   const action=(text,fn,disabled=false)=>{
     const b=node("button",text); b.disabled=disabled; b.onclick=fn; return b;
   };
-  const refresh=(msg="")=>{saveLobby(p);scene.openLobby(tab,msg);};
-  panel.append(node("h1","守夜大厅"),node("p",`大厅 Lv.${p.level}　经验 ${p.xp}/${nextXP(p.level)}　属性点 ${p.points}　抽奖券 ${p.tickets}`));
-  const tabs=node("nav",null,"lobby-tabs");
-  for(const name of ["关卡","角色属性","坐骑","武器","技能"]) {
-    const b=action(name,()=>scene.openLobby(name));b.setAttribute("aria-pressed",String(name===tab));tabs.append(b);
-  }
-  panel.append(tabs);
+  panel.append(node("h1","守夜大厅"),node("p",`大厅 Lv.${p.level}　经验 ${p.xp}/${nextXP(p.level)}`));
   if(message) panel.append(node("p",message,"lobby-result"));
   const grid=node("div",null,"lobby-grid");
   const card=(title,detail,fn,disabled=false,image=null)=>{
@@ -113,41 +105,16 @@ export function renderLobby(scene,tab="关卡",message="") {
     if(image){const img=node("img");img.src="./assets/"+image+".svg";img.alt="";b.append(img);}
     b.append(node("strong",title),node("small",detail));grid.append(b);
   };
-  if(tab==="关卡") {
-    panel.append(node("p","每关十波 · 生存四分钟 · 每24秒一波"));
-    const limit = lastUnlockedStage(p.wins);
-    grid.classList.add("stage-grid");
-    stages.forEach(([name,theme,enemy],i)=>{
-      const locked = i > limit;
-      const detail = locked ? `通关第 ${i} 关后解锁` : theme + (p.wins[i] ? ` · 通关 ×${p.wins[i]}` : "");
-      card(`${i+1}. ${name}`,detail,()=>{
-        p.stage=i;saveLobby(p);scene.stageName=name;scene.waves=stageWaves(i);scene.chooseClass();
-      },locked,enemy);
-    });
-  } else if(tab==="角色属性") {
-    panel.append(node("p","每升一级大厅等级获得 2 点，可用于全职业属性或技能专精。"));
-    for(const [id,[name,detail]] of Object.entries(attributes))
-      card(`${name} +${p.stats[id]||0}`,detail+" · 1 属性点",()=>{
-        if(p.points<1)return;p.points--;p.stats[id]=(p.stats[id]||0)+1;refresh();
-      },!p.points);
-  } else if(tab==="技能") {
-    panel.append(node("p","每级专精提升该技能 8% 伤害，所有职业生效。"));
-    for(const skill of skills) {
-      const rank=p.skills[skill.id]||0;
-      card(skill.name,`专精 ${rank}/5 · `+(rank===5?"已满级":"1 属性点"),()=>{
-        if(!p.points||rank>=5)return;p.points--;p.skills[skill.id]=rank+1;refresh();
-      },!p.points||rank>=5);
-    }
-  } else {
-    const category=tab==="坐骑"?"mount":"weapon";
-    panel.append(node("p",`每级提升${tab}攻击伤害 15% · 升级消耗 4 / 8 / 14 / 22 枚对应碎片`));
-    panel.append(action(`抽取${tab}碎片 · 1 券`,()=>refresh(drawShards(p,category)||"全部碎片已集齐"),p.tickets<1));
-    for(const item of equipment[category]) {
-      const {rank,shards}=gear(p,category,item.id),cost=costs[rank];
-      card(item.name,`Lv.${rank} · `+(rank===5?"已满级":`碎片 ${shards}/${cost}`+(shards>=cost?" · 升级":"")),
-        ()=>{if(upgradeGear(p,category,item.id))refresh(item.name+"升级成功");},rank===5||shards<cost,item.image);
-    }
-  }
+  panel.append(node("p","每关十波 · 敌人分批出现 · 升级选卡 · 清空本波后整备"));
+  const limit = lastUnlockedStage(p.wins);
+  grid.classList.add("stage-grid");
+  stages.forEach(([name,theme,enemy],i)=>{
+    const locked = i > limit;
+    const detail = locked ? `通关第 ${i} 关后解锁` : theme + (p.wins[i] ? ` · 通关 ×${p.wins[i]}` : "");
+    card(`${i+1}. ${name}`,detail,()=>{
+      p.stage=i;saveLobby(p);scene.stageName=name;scene.waves=stageWaves(i);scene.chooseClass();
+    },locked,enemy);
+  });
   panel.append(grid);overlay.append(panel);document.getElementById("game").append(overlay);
   scene.panel={element:overlay,destroy:()=>overlay.remove()};
 }

@@ -117,11 +117,10 @@ test("升级卡与运行时共用伤害和冷却公式", () => {
     assert.ok(text.includes(String(stat.cooldown)));
   }
 });
-test("六职业的武器、参数和定位均不同", () => {
-  assert.equal(CLASSES.length, 6);
-  assert.equal(new Set(CLASSES.map((c) => c.texture)).size, 6);
-  assert.equal(new Set(CLASSES.map((c) => c.hp)).size, 6);
-  assert.equal(new Set(CLASSES.map((c) => c.id)).size, 6);
+test("五个职业使用独立武器、数值与标识", () => {
+  assert.deepEqual(CLASSES.map(c=>c.id),["ranger","berserker","swordsman","elementalist","summoner"]);
+  assert.equal(new Set(CLASSES.map(c=>c.texture)).size,5);
+  assert.equal(new Set(CLASSES.map(c=>[c.hp,c.speed,c.damage].join("/"))).size,5);
 });
 function textStub() {
   return {

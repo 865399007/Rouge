@@ -1,39 +1,27 @@
+import { catalogs } from "./role-cards.js";
+import { rangerCards } from "./ranger.js";
 import { BALANCE, variants } from "./balance.js";
 // Original vector art and presentation layer.
-// Lobby order: ground, shade, highlight, landmark and smaller scenery.
+// Lobby order: ground, shade and highlight.
 const terrain = [
-  [0x455462,0x2c3a46,0x5c707d,"kiosk","planter"],
-  [0x3e5760,0x2a3d48,0x587a83,"bridge","reeds"],
-  [0x544f53,0x353942,0x6e6364,"wagon","rails"],
-  [0x445b52,0x2c453d,0x607463,"glasshouse","shrooms"],
-  [0x4d4a5b,0x343340,0x695c74,"mine","crystal"],
-  [0x49485f,0x2f3148,0x625c7a,"neon","tyres"],
-  [0x3e585e,0x2b4148,0x577071,"crane","buoy"],
-  [0x465363,0x2e394a,0x607082,"turbine","barrier"],
-  [0x455651,0x2e3a3e,0x62716b,"dish","cabinet"],
-  [0x585360,0x3c3a49,0x746975,"keep","brazier"],
+  [0x455462,0x2c3a46,0x5c707d],
+  [0x3e5760,0x2a3d48,0x587a83],
+  [0x544f53,0x353942,0x6e6364],
+  [0x445b52,0x2c453d,0x607463],
+  [0x4d4a5b,0x343340,0x695c74],
+  [0x49485f,0x2f3148,0x625c7a],
+  [0x3e585e,0x2b4148,0x577071],
+  [0x465363,0x2e394a,0x607082],
+  [0x455651,0x2e3a3e,0x62716b],
+  [0x585360,0x3c3a49,0x746975],
 ];
-// Secondary silhouettes vary with the habitat, including rare built landmarks.
-const habitats = [
-  ["water-tower","oak","locker","fern"], ["gantry","willow","buoy","fern"],
-  ["gantry","locker","cart","barrier"], ["fungus-tree","fern","willow","oak"],
-  ["cart","gantry","pine","locker"], ["lamps","barrier","planter","locker"],
-  ["anchor","willow","gantry","reeds"], ["broken-deck","pine","lamps","barrier"],
-  ["mast","pine","locker","fern"], ["banner","oak","brazier","water-tower"],
-];
-const flatScenery = new Set(["rails","broken-deck"]);
 export const sceneryDepth = feet => 4 + feet / 16000;
 export const artKeys = [
   "spider","hound","rat",
-  ...new Set([...terrain.flatMap(row => row.slice(3)), ...habitats.flat()].map(name => "scenery-"+name)),
   "mount-boar-body", "mount-lynx-body", "mount-stag-body",
   "mount-walker-chassis", "mount-walker", "mount-stag", "mount-drake", "mount-lynx", "mount-boar",
   "hero-ranger",
-  "hero-vanguard",
-  "hero-pyromancer",
-  "hero-engineer",
-  "hero-warden",
-  "hero-astronomer",
+  "hero-berserker", "hero-swordsman", "hero-elementalist", "hero-summoner",
   "star-dial",
   "axe",
   "crossbow",
@@ -60,6 +48,7 @@ export const artKeys = [
 ];
 
 const paths = {
+
   constellation: '<path d="m3 15 8-11 9 13-17-2"/><circle cx="3" cy="15" r="2"/><circle cx="11" cy="4" r="2"/><circle cx="20" cy="17" r="2"/>',
   weaponMastery: '<path d="m4 20 4-4m-3-3 6 6m-4-6L17 3l4-1-1 5L10 17"/>',
   meteor:
@@ -78,6 +67,26 @@ const paths = {
   heal_supply: '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z"/>',
 };
 const buffPaths = {
+  雷电共鸣: '<path d="m10 2-6 11h5l-2 8 9-13h-6zm7 1 3 3m-2 6 4 2"/>',
+  陨石术: '<circle cx="8" cy="16" r="5"/><path d="m5 11 9-9m-2 12 9-10m-6 12 5-5"/>',
+  黑洞术: '<ellipse cx="12" cy="12" rx="10" ry="5" transform="rotate(-30 12 12)"/><circle cx="12" cy="12" r="4" fill="#fff3ca"/>',
+  冷却缩减: '<path d="M6 3h12M6 21h12M7 3c0 5 2 6 5 9-3 3-5 4-5 9m10-18c0 5-2 6-5 9 3 3 5 4 5 9"/>',
+  魔力爆发: '<path d="m12 2 2 6 6-4-3 7 5 2-7 2 2 6-6-4-4 5 1-7-6-2 7-3z"/>',
+  回旋剑气: '<path d="M5 15a8 8 0 1 1 9 5m-2-3 2 3 4 1M5 19l8-10 3-1-1 4z"/>',
+  吸血剑刃: '<path d="m3 20 4-5m-3-2 6 5M7 14 18 3l3-1-1 4-10 11m7-3c-1 2-3 4-3 5a3 3 0 0 0 6 0c0-1-2-4-3-5z"/>',
+  幻影剑: '<path d="m3 20 9-16 2-2v4L5 21zm7 0L20 6l2-1-1 4-9 12"/>',
+  石头魔像: '<path d="m4 9 5-6h7l5 6-2 11H6zM7 11l3 1m4 0 3-1m-8 6h6"/>',
+  召唤分裂: '<path d="m12 3 4 4-4 4-4-4zm0 8v2l-6 3m6-3 6 3"/><circle cx="5" cy="18" r="3"/><circle cx="19" cy="18" r="3"/>',
+  召唤继承: '<path d="M4 7 6 3l3 4 3-4 2 4-2 3H6zm5 5v4h6m-2-3 3 3-3 3"/><circle cx="19" cy="16" r="3"/>',
+  灵魂收集: '<path d="M5 19V11a7 7 0 0 1 14 0v9l-4-2-3 3-3-3z"/><path d="M9 10v2m6-2v2"/>',
+  大地震击: '<path d="m3 16 6-2 3-9 3 9 6 2M2 20l6-2 3 3 3-4 7 3"/>',
+  斩杀: '<path d="m4 21 10-12m-5 1 5-6 6-2 1 6-6 5zM3 4l3 3m-4 2 3 1"/>',
+  bounce: '<path d="m2 18 7-11 5 10 7-12m-6 2 6-3v7"/>',
+  split: '<path d="M12 21V12L4 5m0 5V5h5m3 7 8-7m-5 0h5v5"/>',
+  ring: '<circle cx="12" cy="12" r="4"/><path d="M12 6V2m0 16v4M6 12H2m16 0h4M5 5l3 3m8 8 3 3m0-14-3 3M8 16l-3 3"/>',
+  splinterArrow: '<path d="m3 21 9-10m-4 0 4 1 1 4m0-11 1-3m4 5 3-2m-3 7 4 1"/>',
+  heavy: '<path d="m3 21 9-13 8-5-2 10-13 9zm7-7 4 3"/>',
+
   weaponMastery: paths.weaponMastery,
   evasion: '<circle cx="15" cy="6" r="2"/><path d="m13 10-5 4 5 2-4 5m4-11 3 4 5-1M3 8h5m-7 4h4"/>',
   shield: '<path d="m12 2 9 4v6q0 6-9 10-9-4-9-10V6Zm-4 10h8m-4-4v8"/>',
@@ -147,23 +156,13 @@ export function drawStatusEffects(scene) {
 }
 
 export function updateBuffIcons(scene) {
-  const effects = Object.entries(scene.build.attributes)
-    .filter(([, level]) => level > 0)
-    .map(([id, level]) => ({ key: "buff-" + id, level, color: 0x435b48 }));
-  for (const skill of scene.build.active) {
-    if (skill.type === "orbit" || (skill.type === "drain" && scene.combat.zones.some(z => z.owner === skill.id))) {
-      effects.push({ key: "buff-" + skill.id, level: skill.level, color: 0x635075 });
-    }
-  }
-  if (scene.mount) {
-    const { type, shield } = scene.mount;
-    effects.push({ key: "mount-" + type.id, color: 0x665338 });
-    if (!type.shield || shield > 0) effects.push({
-      key: "buff-" + type.passiveIcon, level: type.shield ? Math.ceil(shield) : 0, color: 0x745634,
-    });
-  }
-  if (scene.roll?.remaining > 0) effects.unshift({ key: "buff-haste", color: 0x287467 });
-  if (scene.invincible > 0) effects.push({ key: "buff-invincible", color: 0x3d6374 });
+  const cards = scene.job?.id === "ranger" ? rangerCards : catalogs[scene.job?.name] || [];
+  const effects = cards.filter(card =>
+    (card.rarity === "史诗" || card.rarity === "传说") && scene.build.attributes[card.id] > 0
+  ).map(card => ({
+    key: "buff-" + card.id, level: scene.build.attributes[card.id],
+    color: card.rarity === "传说" ? 0x795820 : 0x59406e,
+  }));
   const row = scene.buffIcons;
   const signature = effects.map(e => e.key + (e.level || "")).join("|");
   if (row.signature !== signature) {
@@ -185,8 +184,14 @@ export function updateBuffIcons(scene) {
   }
   row.setPosition(scene.player.x, scene.player.y - scene.player.displayHeight / 2 - 14);
 }
+const rangerIcon = {
+  strong:"power", rapid:"haste", aim:"crit", critical:"crit", volley:"rail", piercingArrow:"weaponMastery",
+  bounce:"orbit", split:"constellation", repeat:"haste", ring:"orbit", splinterArrow:"meteor", heavy:"weaponMastery",
+  fire:"meteor", ice:"frost", shock:"arc", push:"vortex", health:"vitality", stride:"speed", hunt:"crit",
+  storm:"rail", thunder:"arc", zero:"frost", sniper:"crit",
+};
 export function icon(id) {
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[id] || paths.rail}</svg>`;
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[id] || buffPaths[id] || paths[rangerIcon[id]] || buffPaths[rangerIcon[id]] || paths.rail}</svg>`;
 }
 
 function el(tag, className, text) {
@@ -196,7 +201,7 @@ function el(tag, className, text) {
   return node;
 }
 
-export function renderPanel(scene, title, detail, choices, cards = false) {
+export function renderPanel(scene, title, detail, choices, cards = false, onConfirm) {
   const overlay = el("div", "modal-overlay");
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
@@ -224,7 +229,7 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
     const rules = el("div", "briefing");
     for (const [n, label, text] of [
       ["01", "保持移动", "自动攻击 · 走位生存"],
-      ["02", "收集与进化", "拾取晶体 · 搭配技能"],
+      ["02", "收集与进化", "拾取经验 · 升级选择强化"],
         ["03", "建立防线", "猎杀精英与首领 · 建塔并守护"],
     ]) {
       const row = el("div", "briefing-item");
@@ -247,6 +252,7 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
     const button = el("button", cards ? "choice-card" : "menu-action");
     button.type = "button";
     if (cards) {
+      if (choice.rarity) button.dataset.rarity = choice.rarity;
       button.dataset.element = choice.element || "supply";
       const symbol = el("span", "choice-icon");
       symbol.innerHTML = icon(choice.id);
@@ -262,6 +268,7 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
       el("strong", "choice-title", choice.cardTitle || choice.title),
     );
     button.append(el("span", "choice-detail", choice.stats || choice.detail));
+    if (cards && choice.route) button.append(el("span", "choice-route", choice.route + "流派"));
     if (!cards) button.append(el("span", "action-arrow", "→"));
     button.onclick = () => {
       if (scene.panel?.element === overlay) choice.action();
@@ -274,14 +281,43 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
     "menu-footer",
     cards
       ? choices.length > 3
-        ? "职业武器独立 · 技能槽 ×4"
+        ? "选择职业与起始武器"
         : "点选一项，继续战斗"
       : "W A S D  移动    /    SPACE  暂停    /    触屏拖动左侧移动",
   );
   panel.append(footer);
   if (cards && scene.mode === "upgrade") {
     overlay.classList.add("upgrade-overlay");
-    panel.replaceChildren(list);
+    panel.replaceChildren(head, list);
+    if (onConfirm) {
+      const selected = new Set();
+      const required = Math.min(2, choices.length);
+      const confirm = el("button", "draft-confirm");
+      const cards = Array.from(list.children);
+      const update = () => {
+        const route = [...selected].map(index=>choices[index].route).find(Boolean);
+        confirm.disabled = selected.size !== required;
+        confirm.textContent = `确认强化（${selected.size}/${required}）`;
+        cards.forEach((card, index) => {
+          card.dataset.selected = String(selected.has(index));
+          card.setAttribute("aria-pressed", card.dataset.selected);
+          card.disabled = (selected.size === required && !selected.has(index)) || Boolean(route && choices[index].route && choices[index].route !== route);
+        });
+      };
+      cards.forEach((card, index) => {
+        card.onclick = () => {
+          if (card.disabled) return;
+          if (selected.has(index)) selected.delete(index);
+          else selected.add(index);
+          update();
+        };
+      });
+      confirm.onclick = () => {
+        if (scene.panel?.element === overlay && selected.size === required) onConfirm([...selected]);
+      };
+      update();
+      panel.append(confirm);
+    }
   }
   if (scene.mode === "pause" || scene.mode === "end") {
     overlay.classList.add("pause-overlay");
@@ -293,12 +329,14 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
   const priorFocus = document.activeElement;
   const trap = (event) => {
     if (event.key !== "Tab") return;
-    const buttons = [...overlay.querySelectorAll("button")];
+    const buttons = [...overlay.querySelectorAll("button")].filter(button => !button.disabled);
     const index = buttons.indexOf(document.activeElement);
     event.preventDefault();
-    buttons[
-      (index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length
-    ]?.focus();
+    if (index < 0) {
+      buttons[event.shiftKey ? buttons.length - 1 : 0]?.focus();
+      return;
+    }
+    buttons[(index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length]?.focus();
   };
   overlay.addEventListener("keydown", trap);
   scene.panel = {
@@ -308,14 +346,19 @@ export function renderPanel(scene, title, detail, choices, cards = false) {
       if (priorFocus?.isConnected) priorFocus.focus({ preventScroll: true });
     },
   };
-  list.querySelector("button")?.focus({ preventScroll: true });
+  if (cards && scene.mode === "upgrade") {
+    overlay.tabIndex = -1;
+    overlay.focus({ preventScroll: true });
+  } else {
+    list.querySelector("button")?.focus({ preventScroll: true });
+  }
 }
 
-export function drawGround(scene, x, y, random, solids) {
+export function drawGround(scene, x, y, random) {
   const view = scene.add.container(x * 600, y * 600).setDepth(-10);
   const g = scene.add.graphics();
   view.add(g);
-  const [ground,shade,light,landmark,prop] = terrain[scene.profile.stage] || terrain[0];
+  const [ground,shade,light] = terrain[scene.profile.stage] || terrain[0];
   g.fillStyle(ground).fillRect(0, 0, 600, 600);
   const stage = scene.profile.stage;
   // Broken paving, silt and rubble are ground paint with no collision footprint.
@@ -368,41 +411,6 @@ export function drawGround(scene, x, y, random, solids) {
     }
   }
   for(let i=0;i<65;i++)g.fillStyle(light,.45).fillCircle(random()*600,random()*600,1+random()*1.4);
-  const palette = habitats[scene.profile.stage] || habitats[0];
-  const upright = [];
-  const placed = [];
-  const count = 2 + Math.floor(random()*2);
-  // Reserve one main silhouette, then sample the smaller props without replacement.
-  const pool = [prop, ...new Set(palette.slice(1).filter(name => name !== prop))];
-  const main = random() < .52 ? landmark : palette[0];
-  for (let i=0; i<count; i++) {
-    const key = i===0 ? main : pool.splice(Math.floor(random()*pool.length),1)[0];
-    if (!key) break;
-    const scale = i===0 ? 1.15+random()*.65 : .58+random()*.54;
-    let px,py,clear=false;
-    for (let attempt=0; attempt<12 && !clear; attempt++) {
-      px=105+random()*390; py=105+random()*390;
-      clear=placed.every(point=>Math.hypot(px-point.x,py-point.y)>80 + 48*(scale + point.scale));
-    }
-    if (!clear) continue;
-    // Leave the initial deployment point clear for every stage and screen size.
-    if (Math.hypot(x*600+px-scene.defenses.width/2,y*600+py-scene.defenses.height/2)<145) continue;
-    placed.push({x:px,y:py,scale});
-    const sprite=scene.add.image(x*600+px,y*600+py,"scenery-"+key)
-      .setOrigin(.5,.88).setScale(scale).setFlipX(random()<.5);
-    if(flatScenery.has(key)){
-      sprite.setPosition(px,py);
-      view.add(sprite);
-    } else {
-      sprite.setDepth(sceneryDepth(sprite.y));
-      upright.push(sprite);
-      // The solid footprint is narrower than the illustrated roof or canopy.
-      const narrow = ["oak","pine","willow","mast","lamps","banner","turbine","fungus-tree","reeds","fern"].includes(key);
-      solids.push({x:sprite.x,y:sprite.y-sprite.displayHeight*.09,
-        radius:sprite.displayWidth*(narrow ? .105 : .255),sprite});
-    }
-  }
-  view.once("destroy",()=>{for(const sprite of upright) if(sprite.active)sprite.destroy();});
   return view;
 }
 
@@ -530,9 +538,7 @@ export function updatePresentation(scene, moving) {
   const stage = waves[scene.wave - 1];
   const remaining = stage.total - scene.waveSpawned + scene.enemies.length;
   const waveLabel = document.getElementById("wave");
-  const waveText = scene.waveBreakUntil
-    ? `整备 ${Math.max(0, Math.ceil(scene.waveBreakUntil-scene.runTime))} 秒 · 下一波 ${waves[scene.wave]?.name}`
-    : `${scene.stageName} · ${scene.wave}/${waves.length} 波 · 剩 ${remaining}`;
+  const waveText = `${scene.stageName} · ${scene.wave}/${waves.length} 波 · 剩 ${remaining}`;
   waveLabel.title = stage.name;
   if (waveLabel.textContent !== waveText) waveLabel.textContent = waveText;
   const warning = document.getElementById("boss-warning");

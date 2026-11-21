@@ -1,21 +1,18 @@
 // Quotas count every combatant, including the boss. No clock advances the wave.
 export const waves = [
-  {name:"游尸逼近", total:18, count:3, interval:1.35, kinds:["bug","rat","moth","spider"]},
-  {name:"双巷夹击", total:26, count:4, interval:1.35, kinds:["runner","bug","hound","moth"], crossfire:true},
-  {name:"铁卫悬赏", total:30, count:3, interval:1.3, kinds:["crab","runner","bug"], bounty:true},
-  {name:"疫囊火线", total:35, count:4, interval:1.35, kinds:["pod","hopper","runner","spitter"], crossfire:true},
-  {name:"破门尸魁", total:40, count:4, interval:1.2, kinds:["ram","bug","brute","runner"], bossIndex:0},
-  {name:"旋街追猎", total:48, count:5, interval:1.15, kinds:["saw","hopper","moth"], sweep:true},
-  {name:"骨刺伏击", total:55, count:5, interval:1.2, kinds:["needle","crab","wisp","runner","crab"], crossfire:true},
-  {name:"罐甲尸阵", total:60, count:5, interval:1.1, kinds:["snail","ram","brute","saw"], sweep:true, bossIndex:4},
-  {name:"四面合围", total:72, count:6, interval:1, kinds:["twin","runner","moth","needle","hopper","bug"], surround:true},
-  {name:"黎明决战", total:80, count:6, interval:.95, kinds:["ram","wisp","saw","crab","runner","twin"], surround:true, bossIndex:8},
+  {name:"游尸逼近", total:120, count:12, interval:1, kinds:["bug","rat","moth","spider"]},
+  {name:"双巷夹击", total:160, count:14, interval:0.95, kinds:["runner","bug","hound","moth"], crossfire:true},
+  {name:"铁卫悬赏", total:190, count:15, interval:0.95, kinds:["crab","runner","bug"], bounty:true},
+  {name:"疫囊火线", total:220, count:16, interval:0.9, kinds:["pod","hopper","runner","spitter"], crossfire:true},
+  {name:"破门尸魁", total:250, count:18, interval:0.9, kinds:["ram","bug","brute","runner"], bossIndex:0},
+  {name:"旋街追猎", total:280, count:19, interval:0.85, kinds:["saw","hopper","moth"], sweep:true},
+  {name:"骨刺伏击", total:320, count:20, interval:0.85, kinds:["needle","crab","wisp","runner","crab"], crossfire:true},
+  {name:"罐甲尸阵", total:360, count:22, interval:0.8, kinds:["snail","ram","brute","saw"], sweep:true, bossIndex:4},
+  {name:"四面合围", total:400, count:24, interval:0.8, kinds:["twin","runner","moth","needle","hopper","bug"], surround:true},
+  {name:"黎明决战", total:460, count:26, interval:0.75, kinds:["ram","wisp","saw","crab","runner","twin"], surround:true, bossIndex:8},
 ];
-export function encounterAngle(wave, heading, batch, slot) {
-  if (wave.surround) return heading + batch*.37 + slot*Math.PI*2/wave.count;
-  if (wave.crossfire) return heading + (slot % 2) * Math.PI + Math.sin(batch * 0.55) * 0.23;
-  if (wave.sweep) return heading + Math.floor(batch / 4) * Math.PI / 2 + slot * 0.14;
-  return heading + Math.sin(batch * 0.6) * 0.22 + slot * 0.12;
+export function encounterAngle(heading, batch, slot, count) {
+  return heading + batch * 2.399963 + slot * 2 * Math.PI / count;
 }
 
 export function updateSupply(scene, dt) {

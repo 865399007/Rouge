@@ -1,19 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { lastUnlockedStage, waveSeconds, stages, stageWaves, rewardVictory, drawShards, upgradeGear } from "../lobby.js";
+import { lastUnlockedStage, stages, stageWaves, rewardVictory, drawShards, upgradeGear } from "../lobby.js";
 import { Build } from "../progression.js";
 import { skillStats } from "../balance.js";
 
-test("每关十波都有首领和有限配额，四分钟共十波", () => {
+test("每关十波都有首领和有限配额，每波约五十秒分批出怪", () => {
   assert.equal(stages.length, 10);
   const layouts = stages.map((stage,index) => {
     const run = stageWaves(index);
     assert.equal(run.length,10);
-    assert.equal(run.length * waveSeconds,240);
-    assert.ok(run[0].total >= 26);
+    assert.ok(run[0].total <= 70);
+    assert.ok(run.slice(1).every((wave,i) => wave.total > run[i].total && wave.count > run[i].count));
     assert.equal(run[9].bossIndex,8);
-    const seconds = run.reduce((sum,w)=>sum+(Math.ceil(w.total/w.count)-1)*w.interval,36);
-    assert.equal(Math.round(seconds),236);
+    for (const wave of run) {
+      const duration = (Math.ceil(wave.total / wave.count) - 1) * wave.interval;
+      assert.ok(Math.abs(duration - 50) <= wave.interval / 2 + 1e-8);
+    }
     return JSON.stringify(run.map(w=>w.kinds));
   });
   assert.equal(new Set(layouts).size,10);

@@ -5,8 +5,11 @@ export function drawBattleHud({s,w,h,ids,screen,capRect,toggleNode,padNode,setti
     const left=50,right=w-54;
     function meter(y,ratio,color){box(left,y,225,10,0x726b59,4,1);if(ratio>0)box(left+1,y+1,223*Math.min(1,ratio),8,color,3,0);}
     groundText(left,12,(ids['job-name']?.textContent||'')+'   Lv.'+s.level+'                 '+s.hp.toFixed(0)+' / '+s.maxHp,16,250,true);meter(40,s.hp/s.maxHp,0xc77c60);
-    groundText(left,60,'战斗经验                       '+s.xp+' / '+s.need,13,250);meter(81,s.xp/s.need,0x87a99f);
+    groundText(left,60,'战斗经验   '+s.xp+' / '+s.need,13,250);meter(81,s.xp/s.need,0x87a99f);
     groundText(w/2,10,'街区守夜 / SURVIVE',12,250,true,true);groundText(w/2,28,ids.timer?.textContent,38,250,true,true);groundText(w/2,76,ids.wave?.textContent,14,400,false,true);
+    if (s.waveBreakUntil > s.runTime) {
+      groundText(w/2,101,`下一波 · ${Math.ceil(s.waveBreakUntil-s.runTime)}`,22,250,true,true);
+    }
     Array.from(ids.skills?.children||[]).forEach((n,i)=>drawIcon(images(n)[0] || 'buff-'+s.build.active[i]?.id,left+18+i*44,116,32));
     const cap=capRect,px=Math.min(right-132,cap?.left?cap.left*w/screen.windowWidth-48:right-132),gx=px-82,gy=44;
     const glyph=add(s.add.graphics()).fillStyle(cream);

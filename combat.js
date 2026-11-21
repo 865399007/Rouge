@@ -1,3 +1,4 @@
+import {roleDefense} from "./role-combat.js";
 import { segmentCircleEntry } from "./geometry.js";
 import { BALANCE, skillStats } from "./balance.js";
 import { castArt } from "./battle-skills.js";
@@ -6,6 +7,7 @@ import { drawArc, drawOrbit } from "./presentation.js";
 export const ELEMENT_COLORS = {
   fire: 0xefae65,
   ice: 0xa7d8ec,
+  frost: 0xa7d8ec,
   lightning: 0xf0d477,
   poison: 0xadc86b,
   physical: 0xe1d6bb,
@@ -92,8 +94,9 @@ export class Combat {
     this.clash(index, shot.s.x + shot.vx*dt*first, shot.s.y + shot.vy*dt*first);
     return true;
   }
-  receive(amount) {
+  receive(amount, attacker) {
     const s = this.s;
+    amount = roleDefense(s,amount,attacker);
     const armor = s.build.armor + (s.mount?.type.armor || 0);
     let damage = (amount * 100) / (100 + armor);
     if (s.mount?.shield > 0) {
@@ -131,10 +134,16 @@ export class Combat {
         enemy.status.poison = this.time + 3;
       }
       if (element === "fire") {
-        enemy.burnDamage = amount * 0.12;
+        enemy.burnDamage = amount * 0.12 * (1 + .1*(this.s.build.attributes.元素精通 || 0));
         enemy.status.fire = this.time + 2.5;
       }
       enemy.dotAt ??= this.time + 1;
+    }
+    if(!dot && this.s.build.attributes.元素主宰 && ["ice","frost","fire","lightning"].includes(element)){
+      if(enemy.lastElement && enemy.lastElement!==element && enemy.elementTime+3>=this.time && !(enemy.reactUntil>this.time)){
+        amount+=this.s.build.weaponDamage(this.s.job.damage);enemy.reactUntil=this.time+1;
+      }
+      enemy.lastElement=element;enemy.elementTime=this.time;
     }
     const mitigated = (amount * 100) / (100 + (enemy.armor || 0));
     return this.s.hit(enemy, mitigated, ELEMENT_COLORS[element], {
@@ -148,8 +157,10 @@ export class Combat {
     this.hash.rebuild(s.enemies);
     s.skillGraphics.clear();
     for (const enemy of [...s.enemies]) {
+      if(enemy.armorUntil && enemy.armorUntil<=this.time){enemy.armor=enemy.armorBase;enemy.armorUntil=0;}
+      if(enemy.bleedUntil>=this.time && enemy.bleedTick<=this.time){enemy.bleedTick=this.time+1;this.damage(enemy,enemy.bleedDmg,"physical",true);}
       enemy.status ??= {};
-      enemy.slow = enemy.status.ice > this.time ? (enemy.boss ? 0.9 : 0.72) : 1;
+      enemy.slow = enemy.arrowIceUntil > this.time ? enemy.arrowSlow : enemy.status.ice > this.time ? (enemy.boss ? 0.9 : 0.72) : 1;
       if (enemy.dotAt <= this.time) {
         enemy.dotAt = this.time + 1;
         if (enemy.status.fire > this.time)

@@ -1,5 +1,6 @@
+import { rangerHit } from "./ranger.js";
 import {attachBrowserHud, preloadHud} from './browser-hud.js';
-import { stages, stageWaves, waveSeconds, loadLobby, saveLobby, renderLobby, rewardVictory } from "./lobby.js?v=four-minute-waves";
+import { stages, stageWaves, loadLobby, saveLobby, renderLobby, rewardVictory } from "./lobby.js?v=four-minute-waves";
 import { ImpactAudio } from "./impact-audio.js";
 import { encounterAngle, updateSupply, updateBossRing } from "./encounters.js";
 import {
@@ -411,7 +412,7 @@ class ne {
         this.chunks.set(x + "," + y, { view: this.draw(x, y) });
   }
   draw(b, Y) {
-    return drawGround(this.scene, b, Y, se(b, Y), this.solids);
+    return drawGround(this.scene, b, Y, se(b, Y));
   }
   destroy() {
     for (const b of this.chunks.values()) b.view.destroy(!0);
@@ -575,6 +576,9 @@ class ge extends Lt.Scene {
       (this.defeatedEnemies = []),
       (this.bullets = []),
       (this.gems = []),
+      (this.roleState = null),
+      (this.draftHistory = []),
+      (this.rangerFire = null),
       (this.rate = 390),
       (this.weapon = "pea"),
       (this.traits = { crit: 0, armor: 0, magnet: 0, regen: 0 }),
@@ -647,14 +651,14 @@ class ge extends Lt.Scene {
       this.timerText.setVisible(false),
       this.hint.setVisible(false),
       this.sync(),
-      this.openLobby("关卡", this.victoryMessage));
+      this.openLobby(this.victoryMessage));
     this.victoryMessage = "";
   }
-  openLobby(tab, message) {
+  openLobby(message) {
     this.closePanel();
     Tt.enabled = false;
     document.getElementById("game").classList.add("has-panel");
-    renderLobby(this,tab,message);
+    renderLobby(this,message);
   }
   drawTextures() {}
   get movementSpeed() {
@@ -692,11 +696,11 @@ class ge extends Lt.Scene {
     document.getElementById("game").classList.add("has-panel");
     renderPanel(this, title, detail, choices);
   }
-  showUpgradeCards(title, detail, choices) {
+  showUpgradeCards(title, detail, choices, onConfirm) {
     this.closePanel();
     Tt.enabled = false;
     document.getElementById("game").classList.add("has-panel");
-    renderPanel(this, title, detail, choices, true);
+    renderPanel(this, title, detail, choices, true, onConfirm);
   }
   pauseGame() {
     (this.mode === "play"
@@ -726,7 +730,7 @@ class ge extends Lt.Scene {
     );
     const back = document.createElement("button");
     back.textContent = "返回关卡";
-    back.onclick = () => this.openLobby("关卡");
+    back.onclick = () => this.openLobby();
     this.panel.element.querySelector(".menu-heading").append(back);
   }
   selectClass(id) {
@@ -751,13 +755,14 @@ class ge extends Lt.Scene {
     this.closePanel();
     this.sync();
   }
-  effect(b, Y, K = 0, Q = 0, Z = 0, p = 0, delay = 0) {
+  effect(b, Y, K = 0, Q = 0, Z = 0, p = 0, delay = 0, drag = 0) {
     if (this.hitEffectOwner) (this.hitEffectOwner.hitArt ??= []).push(b);
     if (delay > 0) b.setVisible(false);
     (this.effects.length >= 220 && this.effects.shift().sprite.destroy(),
       this.effects.push({
         sprite: b,
         delay,
+        drag,
         life: Y,
         total: Y,
         vx: K,
@@ -783,6 +788,32 @@ class ge extends Lt.Scene {
         0,
         5,
       );
+    }
+  }
+  deathSmoke(enemy) {
+    const radius = Math.max(12, Math.min(enemy.r || 18, 44));
+    const phase = Math.random() * Math.PI * 2;
+    for (let i = 0; i < 8; i++) {
+      const angle = phase + (i + (Math.random() - 0.5) * 0.55) * Math.PI / 4;
+      const size = radius * (0.18 + Math.random() * 0.13);
+      const speed = radius * (12 + Math.random() * 9);
+      const jet = this.add.graphics()
+        .setPosition(enemy.s.x, enemy.s.y)
+        .setDepth(enemy.s.depth + 0.1)
+        .setRotation(angle);
+      // Draw each spray as one object so dense kills stay within the effect budget.
+      for (let grain = 0; grain < 12; grain++) {
+        const trail = grain / 11;
+        const x = size * (1 - trail * 4.8 + Math.random() * 0.35);
+        const y = size * (Math.random() - 0.5) * (2.6 - trail);
+        const diameter = Math.max(1.4, size * (0.32 + Math.random() * 0.48) * (1 - trail * 0.45));
+        const shade = grain % 3 === 0 ? 0x999697 : grain % 3 === 1 ? 0xd3cfcb : 0xfffaf1;
+        jet.fillStyle(shade, 0.8 + Math.random() * 0.2);
+        if (grain % 3 === 0) jet.fillRect(x, y, diameter, diameter * 0.85);
+        else jet.fillCircle(x, y, diameter / 2);
+      }
+      this.effect(jet, 0.26 + Math.random() * 0.12,
+        Math.cos(angle) * speed, Math.sin(angle) * speed, 0.65, 0, 0, 8);
     }
   }
   muzzle(b, Y) {
@@ -819,8 +850,13 @@ class ge extends Lt.Scene {
         (K.sprite.destroy(), this.effects.splice(Y, 1));
         continue;
       }
-      ((K.sprite.x += K.vx * b),
-        (K.sprite.y += K.vy * b),
+      const damping = K.drag ? Math.exp(-K.drag * b) : 1;
+      const travel = K.drag ? (1 - damping) / K.drag : b;
+      K.sprite.x += K.vx * travel;
+      K.sprite.y += K.vy * travel;
+      K.vx *= damping;
+      K.vy *= damping;
+      (
         (K.sprite.rotation += K.spin * b),
         K.sprite.setAlpha((K.alpha * K.life) / K.total),
         K.grow && K.sprite.setScale(1 + K.grow * (1 - K.life / K.total)));
@@ -865,8 +901,8 @@ class ge extends Lt.Scene {
   }
   hit(enemy, amount, color = 0xdad0af, meta = {}) {
     if (!enemy.s.active || enemy.hp <= 0 || amount <= 0) return 0;
-    const crit = !meta.dot && this.build.random() < this.build.critChance + (this.mount?.type.crit || 0);
-    const actual = Math.min(enemy.hp, amount * (crit ? 1.5 : 1));
+    const crit = meta.forceCrit || !meta.dot && this.build.random() < this.build.critChance + (this.mount?.type.crit || 0);
+    const actual = Math.min(enemy.hp, amount * (crit ? 1.5 + (meta.arrow ? .25*(this.build.attributes.critical || 0) : 0) : 1));
     enemy.hp = Math.max(0, enemy.hp - actual);
     this.damageNumbers.add(enemy, actual, { ...meta, crit });
     if (actual > 0) pt.impact(meta.element, meta.dot);
@@ -917,6 +953,7 @@ class ge extends Lt.Scene {
     }
     if (enemy.hp <= 0) {
       // Stop all targeting immediately but keep the sprite visible through its final impact.
+      this.deathSmoke(enemy);
       enemy.fadeElapsed = 0;
       enemy.fadeStartAlpha = enemy.s.alpha;
       enemy.s.setActive(false);
@@ -1231,69 +1268,59 @@ class ge extends Lt.Scene {
       }
     }
   }
-  upgrade() {
-    if (this.mode !== "play" || this.xp < this.need) return;
-    pt.play("upgrade");
-    let choices;
-    do {
+  gainExperience(amount) {
+    this.xp += amount;
+    while (this.xp >= this.need) {
+      this.xp -= this.need;
       this.level++;
       this.build.heroLevel = this.level;
-      this.xp -= this.need;
       this.need = Ht(this.level);
-      choices = this.build.options(this.level);
-    } while (!choices.length && this.xp >= this.need);
-    if (!choices.length) {
-      this.sync();
+      const choices = this.build.draftAttributes();
+      if (choices.length) {
+        pt.play("upgrade");
+        this.showLevelDraft(choices);
+        return;
+      }
+    }
+  }
+  advanceWave() {
+    this.closePanel();
+    if (this.wave === this.waves.length) {
+      this.finish(true);
       return;
     }
-    this.mode = "upgrade";
-    this.showUpgradeCards(
-      `Lv.${this.level} · 选择升级`,
-      `技能 ${this.build.active.length}/4 · 伤害 +${Math.round((this.build.power - 1) * 100)}% · 护甲 ${this.build.armor}`,
-      choices.map((choice) => ({
-        id: choice.kind === "attribute" && choice.id !== "weaponMastery" ? "heal_supply" : choice.id,
-        element: choice.element,
-        title: choice.name,
-        levelText:
-          choice.kind === "skill"
-            ? choice.previous
-              ? `Lv.${choice.previous} → ${choice.level}`
-              : "获得新技能"
-            : choice.kind === "attribute"
-              ? `属性 ${choice.level}/${choice.max}`
-              : "战地补给",
-        detail: upgradeDescription(choice, this.build),
-        action: () => {
-          if (!this.build.apply(choice, this)) return;
-          if (choice.id === "arc" && choice.level === 5) {
-            this.chooseArcEvolution();
-            return;
-          }
-          this.closePanel();
-          this.mode = "play";
-          this.sync();
-          // Boss XP can cross multiple thresholds; resolve every earned choice.
-          if (this.xp >= this.need) this.upgrade();
-        },
-      })),
-    );
+    this.wave++;
+    this.waveSpawned = this.encounterBatch = this.spawnClock = 0;
+    this.encounterHeading = this.build.random()*Math.PI*2;
+    this.mode = "play";
     this.sync();
   }
-  chooseArcEvolution() {
-    const arc = this.build.active.find(skill => skill.id === "arc");
-    this.showUpgradeCards("闪电链 · 选择进化", "本局永久生效", [
-      ["spread","扩散","击杀时从落点向附近另两名敌人放出电弧，各造成基础伤害的 60%。"],
-      ["return","回流","无新目标可跳跃时，对最后一个存活目标追加一次基础伤害的 85%。"],
-    ].map(([branch,name,detail]) => ({
-      id:"arc", title:name, levelText:"满级进化", detail,
-      action: () => {
-        arc.branch = branch;
-        this.closePanel();
-        this.mode = "play";
-        this.sync();
-        if (this.xp >= this.need) this.upgrade();
-      },
-    })));
+  showLevelDraft(choices) {
+    this.mode = "upgrade";
+    const commit = indices => {
+      const selected = indices.map(index=>choices[index].id);
+      this.draftHistory.push({level:this.level,offered:choices.map(card=>card.id),selected});
+      for (const index of indices) this.build.apply(choices[index], this);
+      this.closePanel();
+      this.mode = "play";
+      this.gainExperience(0);
+      this.sync();
+    };
+    this.showUpgradeCards(
+      `升至 Lv.${this.level} · 选择强化`,
+      `伤害 +${Math.round((this.build.power - 1) * 100)}% · 护甲 ${this.build.armor}`,
+      choices.map((choice, index) => ({
+        id: choice.id,
+        rarity: choice.rarity,
+        route: choice.route,
+        title: choice.name,
+        levelText: `${choice.rarity || "属性"} ${choice.level}/${choice.max}`,
+        detail: upgradeDescription(choice, this.build, this.mount?.type.speed || 0),
+        action: () => commit([index]),
+      })),
+      commit,
+    );
+    this.sync();
   }
   spawnBoss(time) {
     const index = BALANCE.bosses.indexOf(time);
@@ -1341,6 +1368,11 @@ class ge extends Lt.Scene {
   }
   finish(b) {
     if (this.mode === "end") return;
+    this.profile.lastRun = {
+      job:this.job.id, wave:this.wave, cleared:b, seconds:Math.floor(this.runTime),
+      picks:this.draftHistory, attributes:{...this.build.attributes},
+    };
+    if (!b) saveLobby(this.profile);
     if (b) {
       this.mode = "end";
       pt.play("win");
@@ -1413,15 +1445,17 @@ class ge extends Lt.Scene {
       ));
     this.settleDefeated(K);
     let encounter = this.waves[this.wave - 1];
-    if (this.runTime + 1e-8 >= this.wave * waveSeconds) {
+    if (this.waveSpawned >= encounter.total && this.enemies.length === 0 && this.defeatedEnemies.length === 0) {
       if (this.wave === this.waves.length) {
         this.finish(true);
         return;
       }
-      this.wave++;
-      encounter = this.waves[this.wave - 1];
-      this.waveSpawned = this.encounterBatch = this.spawnClock = 0;
-      this.encounterHeading = this.build.random()*Math.PI*2;
+      if (!this.waveBreakUntil) this.waveBreakUntil = this.runTime + 2;
+      if (this.waveBreakUntil - this.runTime <= 1e-8) {
+        this.waveBreakUntil = 0;
+        this.advanceWave();
+        encounter = this.waves[this.wave - 1];
+      }
     }
     const input = this.movementInput();
     const S = Math.hypot(input.x, input.y);
@@ -1481,7 +1515,7 @@ class ge extends Lt.Scene {
           if (this.spawnBoss(BALANCE.bosses[encounter.bossIndex])) this.waveSpawned++;
           continue;
         }
-        const angle = encounterAngle(encounter,this.encounterHeading,this.encounterBatch,i);
+        const angle = encounterAngle(this.encounterHeading, this.encounterBatch, i, count);
         const point = this.defenses.spawn(
           Math.cos(angle) * 520,
           Math.sin(angle) * 430,
@@ -1572,7 +1606,7 @@ class ge extends Lt.Scene {
         const side = (t.sway || 0) * Math.sin(t.gait);
         const pulse = t.surge ? (Math.cos(t.gait) > 0.75 ? 1 + t.surge : 0.55) : 1;
         const chillSpeed = chilled ? (t.boss ? .8 : .55) : 1;
-        const step = t.speed * (t.slow || 1) * chillSpeed * K * pulse / (h * Math.hypot(1, side));
+        const step = t.speed * BALANCE.enemyMovementMultiplier * (t.slow || 1) * chillSpeed * K * pulse / (h * Math.hypot(1, side));
         const previousEnemyX = t.s.x;
         this.defenses.move(t.s, (l - c * side) * step, (c + l * side) * step, t.r);
         if (t.kind === "hound" && Math.abs(t.s.x - previousEnemyX) > 0.01) {
@@ -1612,7 +1646,12 @@ class ge extends Lt.Scene {
       }
     }
     for (let t = this.bullets.length - 1; t >= 0 && this.mode === "play"; t--) {
-      let l = this.bullets[t];
+      const l = this.bullets[t];
+      if (l.delay > 0) {
+        l.delay -= K;
+        if (l.delay > 0) continue;
+        l.s.setVisible(true);
+      }
       if (l.returning) l.s.rotation += K * 10;
       if (((l.age = (l.age || 0) + K), l.homing && this.enemies.length)) {
         const c = this.enemies.reduce((r, n) =>
@@ -1625,7 +1664,7 @@ class ge extends Lt.Scene {
         const c = Math.atan2(this.player.y - l.s.y, this.player.x - l.s.x);
         ((l.vx = Math.cos(c) * (l.returnSpeed ?? 430)),
           (l.vy = Math.sin(c) * (l.returnSpeed ?? 430)),
-          l.returned || (l.outboundHits = l.hit, l.hit = new Set(), l.returned = true));
+          l.returned || (l.damage *= l.returnDamage ?? 1, l.outboundHits = l.hit, l.hit = new Set(), l.returned = true));
       }
       if (this.combat.intercept(l, K)) {
         l.s.destroy();
@@ -1637,7 +1676,7 @@ class ge extends Lt.Scene {
         (l.s.y += l.vy * K),
         (l.life -= K),
         (l.trail -= K),
-        l.trail <= 0)
+        !l.attachedTrail && l.trail <= 0)
       ) {
         l.trail = 0.045;
         const trail = this.add.graphics({x: l.s.x, y: l.s.y}).setDepth(6)
@@ -1660,11 +1699,11 @@ class ge extends Lt.Scene {
       }
       for (const c of [...this.enemies])
         if (
-          !l.hit.has(c) &&
+          c.s.active && !l.hit.has(c) &&
           Lt.Math.Distance.Between(l.s.x, l.s.y, c.s.x, c.s.y) < c.r + 5 &&
           (l.returned && l.outboundHits?.has(c) && this.shieldReturnFeedback(c),
           l.hit.add(c),
-          l.explosive
+          l.onImpact ? l.onImpact(c) : l.rangerArrow ? rangerHit(this,l,c) : l.explosive
             ? (this.explode(l.s.x, l.s.y, l.damage, l.color, l.blastRadius),
               (l.explosive = !1))
             : l.element
@@ -1727,14 +1766,12 @@ class ge extends Lt.Scene {
           }
         }
         pt.play("pickup");
-        this.xp += gem.xp ?? 3;
+        this.gainExperience(gem.xp ?? 3);
         gem.destroy();
         this.gems.splice(t, 1);
         this.sync();
-        if (this.xp >= this.need) {
-          this.upgrade();
-          break;
-        }
+        if (this.mode !== "play") break;
+
       }
     // Feet determine which side of trunks and facades each actor occupies.
     const feet = this.player.y + this.player.displayHeight*.38;
